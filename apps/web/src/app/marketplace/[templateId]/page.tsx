@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useWorkspaceStore, type WorkspaceInfo } from '@/stores/workspace-store';
 import { api } from '@/lib/api-client';
 import { Badge, Button, Card, Input, Textarea } from '@monokeros/ui';
-import { ArrowLeftIcon, UsersIcon, UsersFourIcon, UploadSimpleIcon, XIcon, CheckIcon, PackageIcon, SpinnerIcon, FileXIcon } from '@phosphor-icons/react';
+import { ArrowLeftIcon, UsersIcon, UsersFourIcon, XIcon, CheckIcon, PackageIcon, SpinnerIcon, FileXIcon } from '@phosphor-icons/react';
 import type { TemplateManifest } from '@monokeros/templates';
 import { PRESET_COLORS } from '@monokeros/constants';
 

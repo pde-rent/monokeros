@@ -14,7 +14,6 @@ import { ConfirmDialog } from './confirm-dialog';
 import { FileContextMenu } from './file-context-menu';
 import { DriveContextMenu } from './drive-context-menu';
 import { FilePlusIcon, FolderPlusIcon } from '@phosphor-icons/react';
-import { SYSTEM_FILES } from '@monokeros/constants';
 import { useRegisterFab, type FabAction } from '@/components/shared/fab-context';
 import { EmptyState } from '@monokeros/ui';
 import type { FileEntry } from '@monokeros/types';

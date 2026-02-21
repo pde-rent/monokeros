@@ -10,7 +10,6 @@ import {
   useNodesState,
   useEdgesState,
   type Node,
-  type Edge,
   type NodeTypes,
   BackgroundVariant,
 } from '@xyflow/react';
@@ -19,7 +18,6 @@ import '@xyflow/react/dist/style.css';
 import { useMembers, useTeams, useProjects } from '@/hooks/use-queries';
 import { useDiagramStore } from '@/stores/diagram-store';
 import { useUIStore } from '@/stores/ui-store';
-import { DiagramViewMode } from '@monokeros/types';
 import { FilterPanel } from './filter-panel';
 import { AgentTable } from './agent-table';
 import { TeamGroupNode } from './nodes/team-group-node';

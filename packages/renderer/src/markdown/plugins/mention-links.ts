@@ -1,7 +1,7 @@
 import type MarkdownIt from 'markdown-it';
 import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
 
-const TRIGGER_RE = /^([@#~:])([\w][\w.\-]*)/;
+const TRIGGER_RE = /^([@#~:])([\w][\w.-]*)/;
 
 const TYPE_MAP: Record<string, string> = {
   '@': 'agent',

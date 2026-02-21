@@ -10,7 +10,7 @@ import type { Project } from '@monokeros/types';
 import { TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@monokeros/constants';
 import { formatLabel } from '@monokeros/utils';
 import { formatDate } from '@monokeros/utils';
-import { StatusBadge, TableHeader, ToggleGroup, Button } from '@monokeros/ui';
+import { StatusBadge, TableHeader, ToggleGroup } from '@monokeros/ui';
 import { FilterPanelShell, FilterSection } from '@/components/shared/filter-panel-shell';
 import { FilterChip } from '@/components/shared/filter-chip';
 import { useToggleFilter } from '@/hooks/use-toggle-filter';

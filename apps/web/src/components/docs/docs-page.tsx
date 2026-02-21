@@ -6,7 +6,7 @@ import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import { CollapsiblePanel, useCollapsiblePanel, PANEL_CONSTANTS } from '@/components/layout/collapsible-panel';
-import { EmptyState, SectionLabel, ToggleGroup } from '@monokeros/ui';
+import { EmptyState, SectionLabel } from '@monokeros/ui';
 import { CaretLeftIcon, CaretRightIcon, ArrowsOutIcon, SidebarSimpleIcon } from '@phosphor-icons/react';
 import { useUIStore } from '@/stores/ui-store';
 import { usePopoutPortal } from '@/components/common/popout-portal';

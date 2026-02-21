@@ -140,7 +140,7 @@ export function FilePreviewWindow({ file, category, ownerId, onClose }: Props) {
         <div className="flex-1 overflow-hidden">
           {isLoading ? (
             <div className="p-4 text-xs text-fg-3">Loading...</div>
-          ) : data?.content != null ? (
+          ) : data?.content !== null && data?.content !== undefined ? (
             viewMode === 'preview' && isPreviewable ? (
               <div ref={previewRef} className="h-full overflow-auto p-4">
                 {isRendering ? (

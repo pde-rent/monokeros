@@ -17,7 +17,7 @@ import { MessageBubble, MessageListRow, DropzoneOverlay, PendingFileBadge, Messa
 import { getTeamColor } from '@monokeros/constants';
 import { formatTimestamp } from '@monokeros/utils';
 import { AttachmentPreview } from './attachment-preview';
-import { AttachmentUpload, usePendingFiles } from './attachment-upload';
+import { usePendingFiles } from './attachment-upload';
 import { FilePreviewModal } from './file-preview-modal';
 import { PaperclipIcon, PaperPlaneIcon, ArrowDownIcon } from '@phosphor-icons/react';
 
@@ -585,7 +585,7 @@ const MENTION_TYPE_MAP: Record<string, { type: string; className: string }> = {
 
 function renderContent(content: string) {
   // Highlight @mentions, #projects, ~tasks, :files
-  const parts = content.split(/([@#~:]\w[\w.\-]*)/g);
+  const parts = content.split(/([@#~:]\w[\w.-]*)/g);
   return parts.map((part, i) => {
     const prefix = part[0];
     const meta = MENTION_TYPE_MAP[prefix];
@@ -617,7 +617,7 @@ function CompletedToolChips({ tools }: { tools: ToolCallStatus[] }) {
           className="inline-flex items-center gap-1 rounded-sm bg-surface-3 px-1.5 py-0.5 text-[9px] text-fg-3 font-mono"
         >
           {TOOL_LABELS[t.name] ?? t.name}
-          {t.durationMs != null && (
+          {t.durationMs !== null && t.durationMs !== undefined && (
             <span className="text-fg-3/60">{(t.durationMs / 1000).toFixed(1)}s</span>
           )}
         </span>

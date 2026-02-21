@@ -13,10 +13,7 @@
     "clean": "turbo run clean"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@typescript/native-preview": "^7.0.0-dev.20260219.1",
-    "express": "^5.2.1",
-    "react-resizable-panels": "^4.6.4",
     "turbo": "^2.8.10",
     "typescript": "^5.9.3"
   },

@@ -98,7 +98,7 @@ export class TemplatesService {
 
     // 3. Bootstrap system agents (Mono + Keros) — drives, avatars, conversations, API keys
     const context = `Workspace "${overrides.displayName}" created from template "${tpl.displayName}"`;
-    const { monoId, kerosId } = await this.systemAgents.bootstrap(wsId, overrides.displayName, context);
+    const { monoId: _monoId, kerosId: _kerosId } = await this.systemAgents.bootstrap(wsId, overrides.displayName, context);
 
     // 4. Create agents from manifest, track name→id mapping (filter by includeAgents)
     const nameToId = new Map<string, string>();

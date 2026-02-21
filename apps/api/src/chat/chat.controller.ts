@@ -47,7 +47,7 @@ export class ChatController extends BaseCrudController<Conversation> {
     const limit = limitStr ? parseInt(limitStr, 10) : undefined;
     const offset = offsetStr ? parseInt(offsetStr, 10) : undefined;
     const messages = this.store.getMessagesByConversation(id, limit, offset);
-    const totalMessages = limit != null ? this.store.getMessageCountByConversation(id) : messages.length;
+    const totalMessages = limit !== null && limit !== undefined ? this.store.getMessageCountByConversation(id) : messages.length;
     return { ...conversation, messages, totalMessages };
   }
 

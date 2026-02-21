@@ -86,7 +86,7 @@ export class MockStore {
   getMessagesByConversation(conversationId: string, limit?: number, offset?: number): ChatMessage[] {
     const all = this.filterBy(this.messages, (m) => m.conversationId === conversationId)
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-    if (limit == null) return all;
+    if (limit === null || limit === undefined) return all;
     return all.slice(offset ?? 0, (offset ?? 0) + limit);
   }
 

@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react';
 import { Panel, Group, Separator, PanelImperativeHandle, Orientation } from 'react-resizable-panels';
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 /** Custom vertical resize handle */
 function ResizeHandle({ className = '' }: { className?: string }) {

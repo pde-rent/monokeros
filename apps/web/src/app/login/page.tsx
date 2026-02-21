@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
-import { Button, Input, Card, CardBody } from '@monokeros/ui';
+import { Button, Input, Card } from '@monokeros/ui';
 
 /* ── Inline SVG icons for OAuth providers ────────────────── */
 

@@ -2,7 +2,7 @@
 
 import { GearSixIcon } from '@phosphor-icons/react';
 import { Dialog, Button } from '@monokeros/ui';
-import { useSettingsStore, type WindowBehavior } from '@/stores/settings-store';
+import { useSettingsStore } from '@/stores/settings-store';
 
 export function SettingsDialog() {
   const {

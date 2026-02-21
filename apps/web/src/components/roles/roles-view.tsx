@@ -24,7 +24,7 @@ export function RolesView() {
     enabled: !!slug,
   });
   const { data: teams } = useTeams();
-  const { data: projects } = useProjects();
+  const { data: _projects } = useProjects();
   const [roleFilter, setRoleFilter] = useState<string>('');
 
   const filtered = useMemo(() => {

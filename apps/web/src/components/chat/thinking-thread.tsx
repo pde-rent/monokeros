@@ -104,7 +104,7 @@ function ThinkingEntry({ message }: { message: ChatMessage }) {
         <div className="flex items-center gap-1 px-2 py-0.5">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-green" />
           <span className="text-[9px] text-fg-2">{label}</span>
-          {durationMs != null && (
+          {durationMs !== null && durationMs !== undefined && (
             <span className="text-[8px] text-fg-3">{(durationMs / 1000).toFixed(1)}s</span>
           )}
         </div>

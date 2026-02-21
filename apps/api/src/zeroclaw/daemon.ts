@@ -438,7 +438,6 @@ const DELEGATION_TOOL_DEFINITIONS: ToolDefinition[] = [
 ];
 
 // ── Conversation history (bounded per conversation) ────────────────────────
-type Role = 'system' | 'user' | 'assistant' | 'tool';
 type Message =
   | { role: 'system'; content: string }
   | { role: 'user'; content: string }

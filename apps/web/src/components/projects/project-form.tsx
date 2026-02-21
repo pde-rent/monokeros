@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input, Textarea, PanelSection, FilterChipGroup, CheckboxGroup } from '@monokeros/ui';
+import { Button, Input, Textarea, FilterChipGroup, CheckboxGroup } from '@monokeros/ui';
 import { useTeams, useMembers } from '@/hooks/use-queries';
 import { formatLabel } from '@monokeros/utils';
 import type { Project, CreateProjectInput } from '@monokeros/types';

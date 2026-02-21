@@ -5,7 +5,6 @@ import { DiagramViewMode } from '@monokeros/types';
 // Layout constants for team group containers
 const GROUP_WIDTH = 260;
 const GROUP_HEADER_H = 40;
-const GROUP_PAD_X = 30;
 const GROUP_PAD_BOTTOM = 30;
 const LEAD_REL_Y = GROUP_HEADER_H + 15;
 const AGENT_START_Y = LEAD_REL_Y + 140;

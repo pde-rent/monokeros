@@ -21,7 +21,7 @@ export function IssueDetailOverlay({ task, onClose }: Props) {
   const team = teams?.find((t) => t.id === task.teamId);
   const depTasks = allTasks?.filter((t) => task.dependencies.includes(t.id)) ?? [];
 
-  const title = task.offloadable
+  const _title = task.offloadable
     ? `${task.id} • Offloadable`
     : task.id;
 

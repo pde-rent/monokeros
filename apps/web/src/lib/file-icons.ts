@@ -70,7 +70,7 @@ export function getTreeFileIconColor(entry: FileEntry): string {
   return 'var(--color-fg-2)';
 }
 
-export function getListFileIcon(entry: FileEntry, size: number) {
+export function getListFileIcon(entry: FileEntry, _size: number) {
   if (entry.type === 'directory') {
     return { Icon: FolderSimpleIcon, color: 'var(--color-orange)', weight: 'fill' as const };
   }

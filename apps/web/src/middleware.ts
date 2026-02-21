@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
 
   // Check for token in cookies or let client-side handle redirect
   // We use a lightweight check here - full validation happens on API calls
-  const token = request.cookies.get('token')?.value;
+  const _token = request.cookies.get('token')?.value;
 
   // For SSR, we can't easily check localStorage, so we allow the request through
   // The client-side auth provider will handle the redirect

@@ -6,7 +6,7 @@ import { api } from '@/lib/api-client';
 import { useWorkspaceStore, type WorkspaceInfo } from '@/stores/workspace-store';
 import { useRouter } from 'next/navigation';
 import type { TemplateManifest, TemplateListing } from '@monokeros/templates';
-import { UploadSimpleIcon, XIcon, CheckIcon, MagnifyingGlassIcon, FileDottedIcon, TelegramLogoIcon, PackageIcon } from '@phosphor-icons/react';
+import { XIcon, CheckIcon, MagnifyingGlassIcon, FileDottedIcon, TelegramLogoIcon, PackageIcon } from '@phosphor-icons/react';
 import { PRESET_COLORS } from '@monokeros/constants';
 
 function slugify(name: string) {
@@ -28,7 +28,7 @@ export function CreateWorkspaceForm({ onCancel, onCreated }: Props) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [description, setDescription] = useState('');
   const [color, setColor] = useState(PRESET_COLORS[0]);
-  const [customColor, setCustomColor] = useState('');
+  const [_customColor, _setCustomColor] = useState('');
   const [uploadedLogo, setUploadedLogo] = useState<string | null>(null);
   const [telegramToken, setTelegramToken] = useState('');
   const [showTelegram, setShowTelegram] = useState(false);
@@ -36,7 +36,7 @@ export function CreateWorkspaceForm({ onCancel, onCreated }: Props) {
   // Template state
   const [templates, setTemplates] = useState<TemplateListing[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateManifest | null>(null);
-  const [templateDetailLoading, setTemplateDetailLoading] = useState(false);
+  const [_templateDetailLoading, setTemplateDetailLoading] = useState(false);
 
   // Selection state for agents/teams from template
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());

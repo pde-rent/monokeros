@@ -12,7 +12,7 @@ export function useProjectPageView(initialProjectRef?: string) {
   const { data: projects } = useProjects();
 
   // Resolve the initial URL param (slug or id) to a project id
-  const projectsLoaded = !!projects;
+  const _projectsLoaded = !!projects;
   const resolvedInitialId = useMemo(() => {
     if (!initialProjectRef || !projects) return undefined;
     // Try slug match first, then id match

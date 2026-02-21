@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Param, Body, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Get, Put, Body, BadRequestException, Req } from '@nestjs/common';
 import { MockStore } from '../store/mock-store';
 import { TelegramService } from './telegram.service';
 import { Permissions } from '../auth/permissions.decorator';

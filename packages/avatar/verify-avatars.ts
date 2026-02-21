@@ -1,4 +1,4 @@
-import { generateAvatar, SKIN_TONES } from './src/index';
+import { generateAvatar } from './src/index';
 import { TEAM_PRESETS } from '../constants/src/index';
 
 const COUNT = 1000;
@@ -39,7 +39,7 @@ function countImageLayers(svg: string): number {
 }
 
 // Determine gender from SVG content
-function detectGender(svg: string): 'male' | 'female' {
+function _detectGender(svg: string): 'male' | 'female' {
   // Gender is determined by which hair layers are present
   // hair_male and beard only appear for gender=1
   // hair_female only appears for gender=2

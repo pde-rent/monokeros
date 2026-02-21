@@ -4,7 +4,7 @@ import type { MemberStatus } from '@monokeros/types';
 import { StatusBadge, StatusIndicator } from '@monokeros/ui';
 
 function AgentNodeComponent({ data }: NodeProps) {
-  const { name, specialization, status, teamColor, avatarUrl, highlighted, faded, projects, isSystem } = data as {
+  const { name, specialization, status, avatarUrl, highlighted, faded, projects, isSystem } = data as {
     name: string;
     specialization: string;
     status: MemberStatus;

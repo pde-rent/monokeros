@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, getInitials } from './avatar';
+import { Avatar } from './avatar';
 
 export type EntityLinkVariant = 'default' | 'accent-green' | 'accent-blue' | 'accent-orange' | 'accent-purple';
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { GateStatus, TaskStatus } from '@monokeros/types';
 import { DEFAULT_ENTITY_COLOR } from '@monokeros/constants';
 import type { ApiClient } from '../api-client';
-import { enumValues, errorResult, withResult } from './utils';
+import { enumValues, withResult } from './utils';
 
 export function registerProjectTools(server: McpServer, api: ApiClient) {
   server.tool(

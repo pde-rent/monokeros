@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { ContextMenu } from '@monokeros/ui';
 import type { ContextMenuItem } from '@monokeros/ui';
 import { SYSTEM_FILES } from '@monokeros/constants';
-import { FilePlusIcon, FolderPlusIcon, CopyIcon, ClipboardTextIcon, PencilSimpleIcon, TrashIcon, ChatCircleIcon } from '@phosphor-icons/react';
+import { FilePlusIcon, FolderPlusIcon, CopyIcon, ClipboardTextIcon, TrashIcon, ChatCircleIcon } from '@phosphor-icons/react';
 import type { FileEntry } from '@monokeros/types';
 
 interface Props {

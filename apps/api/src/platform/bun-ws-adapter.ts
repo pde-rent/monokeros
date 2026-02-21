@@ -104,7 +104,7 @@ export class BunWsAdapter implements WebSocketAdapter {
         const result$ = info.transform(handler.callback(message.data));
         if (result$ && typeof (result$ as any).subscribe === 'function') {
           (result$ as any).subscribe((response: any) => {
-            if (response != null && ws.readyState === WS_OPEN) {
+            if (response !== null && response !== undefined && ws.readyState === WS_OPEN) {
               ws.send(JSON.stringify(response));
             }
           });
