@@ -1,0 +1,406 @@
+@import "tailwindcss";
+@source "../../../../packages/ui/src";
+@import "./code-theme.css";
+@import "./markdown-theme.css";
+
+/*
+ * Soft Metro Design System
+ * Clean and minimal with subtle rounding - inspired by Microsoft Fluent 2
+ *
+ * Design Rationale:
+ * We use subtle corner radius (4-8px) instead of sharp corners to:
+ * - Reduce visual harshness and eye strain during extended use
+ * - Create a friendlier, more approachable aesthetic
+ * - Align with modern design trends (Fluent 2, Material You)
+ * - Improve perceived affordance of interactive elements
+ * - Maintain the clean, structured feel of Metro while being softer
+ *
+ * All colors and design tokens are defined here as CSS variables.
+ * DO NOT hardcode colors anywhere else - always use these variables.
+ */
+
+:root {
+  /* Typography */
+  --raw-font-primary: 'Segoe UI', 'Segoe UI Web', -apple-system, BlinkMacSystemFont, sans-serif;
+  --raw-font-mono: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+  --raw-font-display: var(--font-display), 'Silkscreen', cursive;
+
+  /* Background Colors */
+  --raw-bg-primary: #ffffff;
+  --raw-bg-secondary: #f5f5f5;
+  --raw-bg-tertiary: #ebebeb;
+  --raw-bg-elevated: #fafafa;
+  /* Canvas (diagram/flow) - Figma-style neutral gray */
+  --raw-canvas-bg: #e5e5e5;
+  --raw-canvas-dots: #d5d5d5;
+  --raw-minimap-mask: rgba(255, 255, 255, 0.65);
+
+  /* Border Colors */
+  --raw-border: #d1d1d1;
+  --raw-border-hover: #b4b4b4;
+  --raw-border-focus: #001EF4;
+
+  /* Text Colors */
+  --raw-text-primary: #1a1a1a;
+  --raw-text-secondary: #616161;
+  --raw-text-tertiary: #9e9e9e;
+  --raw-text-inverse: #ffffff;
+
+  /* Accent Colors (MonokerOS - Electric Blue Signature) */
+  /* Signature vivid blue - use for TEXT/ICONS only, NEVER as background */
+  --raw-accent-blue: #001EF4;
+  --raw-accent-blue-hover: #0019D0;
+  /* Muted blue for interactive element BACKGROUNDS (buttons, active states) */
+  --raw-accent-blue-bg: #3357F5;
+  --raw-accent-blue-bg-hover: #1A3DE8;
+  /* Light tinted blue for subtle backgrounds */
+  --raw-accent-blue-light: #F0F2FF;
+  /* Lavender from logo - secondary accent */
+  --raw-accent-lavender: #A5B0FF;
+  --raw-accent-lavender-light: #E8EAFF;
+  /* Other accents */
+  --raw-accent-purple: #8764b8;
+  --raw-accent-purple-light: #ede0f4;
+  --raw-accent-green: #107c10;
+  --raw-accent-green-light: #dff6dd;
+  --raw-accent-orange: #ff8c00;
+  --raw-accent-orange-light: #fff4ce;
+  --raw-accent-red: #d13438;
+  --raw-accent-red-light: #fde7e9;
+  --raw-accent-yellow: #ffb900;
+  --raw-accent-yellow-light: #fff4ce;
+
+  /* Status Colors */
+  --raw-status-idle: #9e9e9e;
+  --raw-status-idle-light: #f5f5f5;
+  --raw-status-working: #107c10;
+  --raw-status-working-light: #dff6dd;
+  --raw-status-reviewing: #ff8c00;
+  --raw-status-reviewing-light: #fff4ce;
+  --raw-status-blocked: #d13438;
+  --raw-status-blocked-light: #fde7e9;
+  --raw-status-offline: #4a4a4a; /* Darker gray for better visibility */
+  --raw-status-offline-light: #e8e8e8;
+
+  /* Team Colors */
+  --color-team-product: #3355DD;
+  --color-team-design: #8764b8;
+  --color-team-development: #107c10;
+  --color-team-testing: #ff8c00;
+  --color-team-devops: #d13438;
+  --color-team-marketing: #e3008c;
+
+  /* Priority Colors */
+  --color-priority-critical: #d13438;
+  --color-priority-high: #ff8c00;
+  --color-priority-medium: #ffb900;
+  --color-priority-low: #3355DD;
+  --color-priority-none: #9e9e9e;
+
+  /* Consensus State Colors */
+  --color-consensus-executing: #3355DD;
+  --color-consensus-comparing: #ff8c00;
+  --color-consensus-matched: #107c10;
+  --color-consensus-discrepancy: #d13438;
+  --color-consensus-retrying: #ff8c00;
+  --color-consensus-escalated: #8764b8;
+  --color-consensus-resolved: #9e9e9e;
+
+  /* Confidence Colors */
+  --color-confidence-high: #107c10;
+  --color-confidence-medium: #ff8c00;
+  --color-confidence-low: #d13438;
+  --color-confidence-not-started: #9e9e9e;
+
+  /* Aliases for markdown-theme.css and code-theme.css */
+  --font-family-primary: var(--raw-font-primary);
+  --font-family-mono: var(--raw-font-mono);
+  --color-text-primary: var(--raw-text-primary);
+  --color-text-secondary: var(--raw-text-secondary);
+  --color-text-tertiary: var(--raw-text-tertiary);
+  --color-bg-primary: var(--raw-bg-primary);
+  --color-bg-secondary: var(--raw-bg-secondary);
+  --color-bg-tertiary: var(--raw-bg-tertiary);
+  --color-border: var(--raw-border);
+  --color-accent-blue: var(--raw-accent-blue);
+  --color-accent-green: var(--raw-accent-green);
+  --color-accent-purple: var(--raw-accent-purple);
+  --color-accent-orange: var(--raw-accent-orange);
+  --color-accent-red: var(--raw-accent-red);
+
+  /* Layout */
+  --layout-top-nav-height: 2.5rem;
+  --layout-status-bar-height: 1.5rem;
+  --layout-sidebar-width: 14rem;
+  --layout-detail-panel-width: 14rem;
+}
+
+/* ── Dark Theme ────────────────────────────────────────── */
+.dark {
+  --raw-bg-primary: #1e1e1e;
+  --raw-bg-secondary: #262626;
+  --raw-bg-tertiary: #2e2e2e;
+  --raw-bg-elevated: #2a2a2a;
+  --raw-canvas-bg: #141414;
+  --raw-canvas-dots: #1e1e1e;
+  --raw-minimap-mask: rgba(0, 0, 0, 0.65);
+
+  --raw-border: #3a3a3a;
+  --raw-border-hover: #505050;
+  --raw-border-focus: #4466FF;
+
+  --raw-text-primary: #e4e4e4;
+  --raw-text-secondary: #a0a0a0;
+  --raw-text-tertiary: #666666;
+  --raw-text-inverse: #1a1a1a;
+
+  --raw-accent-blue: #4466FF;
+  --raw-accent-blue-hover: #5577FF;
+  --raw-accent-blue-bg: #4D6FFF;
+  --raw-accent-blue-bg-hover: #5C7CFF;
+  --raw-accent-blue-light: #2a3560;
+  --raw-accent-lavender-light: #1e1f33;
+
+  --raw-accent-purple-light: #2a1f3a;
+  --raw-accent-green-light: #1a2e1a;
+  --raw-accent-orange-light: #2e2518;
+  --raw-accent-red-light: #2e1a1a;
+  --raw-accent-yellow-light: #2e2918;
+
+  --raw-status-idle-light: #2a2a2a;
+  --raw-status-working-light: #1a2e1a;
+  --raw-status-reviewing-light: #2e2518;
+  --raw-status-blocked-light: #2e1a1a;
+  --raw-status-offline-light: #252525;
+
+  /* Dark mode team colors - slightly brighter for better visibility */
+  --color-team-product: #5577FF;
+  --color-team-design: #a78bfa;
+  --color-team-development: #22c55e;
+  --color-team-testing: #fbbf24;
+  --color-team-devops: #f87171;
+  --color-team-marketing: #f472b6;
+
+  /* Dark mode priority colors - brighter for dark backgrounds */
+  --color-priority-critical: #f87171;
+  --color-priority-high: #fbbf24;
+  --color-priority-medium: #facc15;
+  --color-priority-low: #60a5fa;
+  --color-priority-none: #9ca3af;
+
+  /* Dark mode consensus colors */
+  --color-consensus-executing: #60a5fa;
+  --color-consensus-comparing: #fbbf24;
+  --color-consensus-matched: #22c55e;
+  --color-consensus-discrepancy: #f87171;
+  --color-consensus-retrying: #fbbf24;
+  --color-consensus-escalated: #a78bfa;
+  --color-consensus-resolved: #9ca3af;
+
+  /* Dark mode confidence colors */
+  --color-confidence-high: #22c55e;
+  --color-confidence-medium: #fbbf24;
+  --color-confidence-low: #f87171;
+  --color-confidence-not-started: #9ca3af;
+
+  /* Dark mode shadows - lighter for dark theme */
+  --shadow-sm: 0 1px 2px 0 rgba(255, 255, 255, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(255, 255, 255, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(255, 255, 255, 0.05);
+}
+
+/* ── Tailwind Theme ─────────────────────────────────────── */
+@theme {
+  /* Colors */
+  --color-surface: var(--raw-bg-primary);
+  --color-surface-2: var(--raw-bg-secondary);
+  --color-surface-3: var(--raw-bg-tertiary);
+  --color-elevated: var(--raw-bg-elevated);
+  --color-canvas: var(--raw-canvas-bg);
+
+  --color-fg: var(--raw-text-primary);
+  --color-fg-2: var(--raw-text-secondary);
+  --color-fg-3: var(--raw-text-tertiary);
+  --color-fg-inverse: var(--raw-text-inverse);
+
+  --color-edge: var(--raw-border);
+  --color-edge-hover: var(--raw-border-hover);
+  --color-edge-focus: var(--raw-border-focus);
+
+  --color-blue: var(--raw-accent-blue);
+  --color-blue-hover: var(--raw-accent-blue-hover);
+  --color-blue-bg: var(--raw-accent-blue-bg);
+  --color-blue-bg-hover: var(--raw-accent-blue-bg-hover);
+  --color-blue-light: var(--raw-accent-blue-light);
+
+  --color-lavender: var(--raw-accent-lavender);
+  --color-lavender-light: var(--raw-accent-lavender-light);
+
+  --color-purple: var(--raw-accent-purple);
+  --color-purple-light: var(--raw-accent-purple-light);
+
+  --color-green: var(--raw-accent-green);
+  --color-green-light: var(--raw-accent-green-light);
+
+  --color-orange: var(--raw-accent-orange);
+  --color-orange-light: var(--raw-accent-orange-light);
+
+  --color-red: var(--raw-accent-red);
+  --color-red-light: var(--raw-accent-red-light);
+
+  --color-yellow: var(--raw-accent-yellow);
+  --color-yellow-light: var(--raw-accent-yellow-light);
+
+  --color-idle: var(--raw-status-idle);
+  --color-idle-light: var(--raw-status-idle-light);
+  --color-status-idle: var(--raw-status-idle);
+
+  --color-working: var(--raw-status-working);
+  --color-working-light: var(--raw-status-working-light);
+  --color-status-working: var(--raw-status-working);
+
+  --color-reviewing: var(--raw-status-reviewing);
+  --color-reviewing-light: var(--raw-status-reviewing-light);
+  --color-status-reviewing: var(--raw-status-reviewing);
+
+  --color-blocked: var(--raw-status-blocked);
+  --color-blocked-light: var(--raw-status-blocked-light);
+  --color-status-blocked: var(--raw-status-blocked);
+
+  --color-offline: var(--raw-status-offline);
+  --color-offline-light: var(--raw-status-offline-light);
+  --color-status-offline: var(--raw-status-offline);
+
+  /* Radius */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* Text sizes (below Tailwind text-xs = 12px) */
+  --text-3xs: 8px;
+  --text-2xs: 10px;
+
+  /* Spacing scale */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* Component widths */
+  --width-diagram-node: 160px;
+  --width-diagram-node-lead: 180px;
+  --width-sidebar: 224px;
+  --width-panel: 280px;
+  --width-detail-panel: 224px;
+  --width-command-palette: 480px;
+  --width-dropdown: 140px;
+  --width-fab: 160px;
+
+  /* Component heights */
+  --height-row: 36px;
+  --height-row-sm: 28px;
+  --height-node: 56px;
+
+  /* Fonts */
+  --font-sans: var(--raw-font-primary);
+  --font-mono: var(--raw-font-mono);
+  --font-display: var(--raw-font-display);
+}
+
+body {
+  background-color: var(--raw-bg-primary);
+  color: var(--raw-text-primary);
+  font-family: var(--raw-font-primary);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* React Flow overrides - Soft Metro style */
+.react-flow__background {
+  background-color: var(--raw-canvas-bg) !important;
+}
+
+.react-flow__minimap {
+  background-color: var(--raw-bg-primary) !important;
+  border: 1px solid var(--raw-border) !important;
+  border-radius: 3px !important;
+}
+
+.react-flow__minimap-mask {
+  stroke: var(--raw-border) !important;
+  stroke-width: 1 !important;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--raw-border) !important;
+  border-radius: 3px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls button {
+  background-color: var(--raw-bg-secondary) !important;
+  border-color: var(--raw-border) !important;
+  color: var(--raw-text-primary) !important;
+  border-radius: 0 !important;
+}
+
+.react-flow__controls button:hover {
+  background-color: var(--raw-bg-tertiary) !important;
+}
+
+/* Scrollbar styling - Soft Metro style */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--raw-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--raw-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--raw-border-hover);
+}
+
+/* Animations */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Reusable Component Classes ─────────────────────────── */
+
+@layer components {
+  .row-hover {
+    @apply border-b border-edge transition-colors hover:bg-surface-3;
+  }
+
+  .section-border {
+    @apply border-b border-edge;
+  }
+
+}

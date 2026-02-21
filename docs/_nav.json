@@ -1,0 +1,63 @@
+{
+  "title": "MonokerOS Documentation",
+  "sections": [
+    {
+      "title": "Overview",
+      "items": [
+        { "title": "Introduction", "path": "index" }
+      ]
+    },
+    {
+      "title": "Getting Started",
+      "items": [
+        { "title": "Installation", "path": "getting-started/installation" },
+        { "title": "Quick Start", "path": "getting-started/quick-start" },
+        { "title": "Self-Hosting", "path": "getting-started/self-hosting" }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "items": [
+        { "title": "System Overview", "path": "architecture/overview" },
+        { "title": "Monorepo Structure", "path": "architecture/monorepo" },
+        { "title": "Design Inspirations", "path": "architecture/inspirations" }
+      ]
+    },
+    {
+      "title": "Core Concepts",
+      "items": [
+        { "title": "Workspaces", "path": "core-concepts/workspaces" },
+        { "title": "Agents", "path": "core-concepts/agents" },
+        { "title": "Teams", "path": "core-concepts/teams" },
+        { "title": "Projects & Tasks", "path": "core-concepts/projects" },
+        { "title": "Drives", "path": "core-concepts/drives" }
+      ]
+    },
+    {
+      "title": "Features",
+      "items": [
+        { "title": "Chat & Messaging", "path": "features/chat" },
+        { "title": "File Management", "path": "features/file-management" },
+        { "title": "Org Chart", "path": "features/org-chart" },
+        { "title": "AI Providers", "path": "features/ai-providers" }
+      ]
+    },
+    {
+      "title": "Technical Reference",
+      "items": [
+        { "title": "REST API", "path": "technical/api" },
+        { "title": "WebSocket Protocol", "path": "technical/websocket" },
+        { "title": "Authentication", "path": "technical/auth" },
+        { "title": "Daemon System", "path": "technical/daemon" },
+        { "title": "MCP Server", "path": "technical/mcp" },
+        { "title": "Rendering Pipeline", "path": "technical/rendering" }
+      ]
+    },
+    {
+      "title": "Roadmap",
+      "items": [
+        { "title": "Future Plans", "path": "roadmap/future" }
+      ]
+    }
+  ]
+}

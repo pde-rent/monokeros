@@ -1,0 +1,144 @@
+/* CodeFlask / Prism Theme - uses CSS variables for light/dark support */
+
+/* ── Structural CSS (required since defaultTheme: false) ─────── */
+
+.code-editor-container {
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  background: var(--color-bg-primary);
+  position: relative;
+}
+
+.code-editor-container .codeflask {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-primary) !important;
+}
+
+.code-editor-container .codeflask__flatten {
+  font-family: var(--font-family-mono) !important;
+  font-size: 0.75rem !important;
+  line-height: 1.6 !important;
+  border: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  white-space: pre !important;
+  word-wrap: normal !important;
+}
+
+.code-editor-container .codeflask__textarea,
+.code-editor-container .codeflask__pre {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+  resize: none;
+}
+
+/* Textarea must be transparent - only the caret is visible */
+.code-editor-container .codeflask__textarea {
+  color: transparent !important;
+  caret-color: var(--color-text-primary) !important;
+  background: transparent !important;
+  z-index: 1;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Pre shows the syntax-highlighted code */
+.code-editor-container .codeflask__pre {
+  color: var(--color-text-primary) !important;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Line numbers ──────────────────────────────────────────────── */
+
+.code-editor-container .codeflask--has-line-numbers .codeflask__flatten {
+  padding-left: 3.5em !important;
+}
+
+.code-editor-container .codeflask__lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3em;
+  height: 100%;
+  background: var(--color-bg-secondary) !important;
+  color: var(--color-text-tertiary) !important;
+  font-family: var(--font-family-mono) !important;
+  font-size: 0.625rem;
+  /* Must match code area: 0.75rem * 1.6 = 1.2rem */
+  line-height: 1.2rem;
+  padding: 10px 0 !important;
+  text-align: right;
+  z-index: 2;
+  overflow: hidden;
+  box-sizing: border-box;
+  border-right: 1px solid var(--color-border);
+}
+
+.code-editor-container .codeflask__lines__line {
+  display: block;
+  padding-right: 0.5em;
+}
+
+/* ── Token colors (syntax highlighting) ────────────────────────── */
+
+.code-editor-container .token.keyword {
+  color: var(--color-accent-blue);
+}
+
+.code-editor-container .token.string,
+.code-editor-container .token.attr-value {
+  color: var(--color-accent-green);
+}
+
+.code-editor-container .token.comment,
+.code-editor-container .token.block-comment,
+.code-editor-container .token.prolog,
+.code-editor-container .token.doctype,
+.code-editor-container .token.cdata {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.code-editor-container .token.function,
+.code-editor-container .token.class-name {
+  color: var(--color-accent-purple);
+}
+
+.code-editor-container .token.number,
+.code-editor-container .token.boolean {
+  color: var(--color-accent-orange);
+}
+
+.code-editor-container .token.operator,
+.code-editor-container .token.punctuation {
+  color: var(--color-text-secondary);
+}
+
+.code-editor-container .token.tag,
+.code-editor-container .token.selector {
+  color: var(--color-accent-red);
+}
+
+.code-editor-container .token.property,
+.code-editor-container .token.attr-name {
+  color: var(--color-accent-orange);
+}
+
+.code-editor-container .token.regex,
+.code-editor-container .token.important {
+  color: var(--color-accent-orange);
+}
+
+.code-editor-container .token.builtin {
+  color: var(--color-accent-blue);
+}

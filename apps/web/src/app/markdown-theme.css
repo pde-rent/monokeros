@@ -1,0 +1,277 @@
+/* Rendered Markdown Theme - Metro Design System */
+
+.rendered-markdown {
+  font-family: var(--font-family-primary);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: var(--color-text-primary);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Headings */
+.rendered-markdown h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.rendered-markdown h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1rem 0 0.4rem;
+  color: var(--color-text-primary);
+}
+
+.rendered-markdown h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.3rem;
+  color: var(--color-text-primary);
+}
+
+.rendered-markdown h4,
+.rendered-markdown h5,
+.rendered-markdown h6 {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+  color: var(--color-text-secondary);
+}
+
+/* Paragraphs */
+.rendered-markdown p {
+  margin: 0.4rem 0;
+}
+
+.rendered-markdown > :first-child {
+  margin-top: 0;
+}
+
+.rendered-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+/* Links */
+.rendered-markdown a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+}
+
+.rendered-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.rendered-markdown ul,
+.rendered-markdown ol {
+  margin: 0.4rem 0;
+  padding-left: 1.5rem;
+}
+
+.rendered-markdown li {
+  margin: 0.15rem 0;
+}
+
+.rendered-markdown li > ul,
+.rendered-markdown li > ol {
+  margin: 0.1rem 0;
+}
+
+/* Blockquote */
+.rendered-markdown blockquote {
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+  border-left: 3px solid var(--color-accent-blue);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.rendered-markdown blockquote p {
+  margin: 0.2rem 0;
+}
+
+/* Horizontal Rule */
+.rendered-markdown hr {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Inline code */
+.rendered-markdown code {
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent-red);
+}
+
+/* Code blocks - reuses Prism token classes from code-theme.css */
+.rendered-markdown pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  overflow-x: auto;
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.rendered-markdown pre code {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: inherit;
+}
+
+/* Prism token colors (same as code-theme.css but scoped to rendered-markdown) */
+.rendered-markdown .token.keyword { color: var(--color-accent-blue); }
+.rendered-markdown .token.string,
+.rendered-markdown .token.attr-value { color: var(--color-accent-green); }
+.rendered-markdown .token.comment,
+.rendered-markdown .token.block-comment,
+.rendered-markdown .token.prolog,
+.rendered-markdown .token.doctype,
+.rendered-markdown .token.cdata { color: var(--color-text-tertiary); font-style: italic; }
+.rendered-markdown .token.function,
+.rendered-markdown .token.class-name { color: var(--color-accent-purple); }
+.rendered-markdown .token.number,
+.rendered-markdown .token.boolean { color: var(--color-accent-orange); }
+.rendered-markdown .token.operator,
+.rendered-markdown .token.punctuation { color: var(--color-text-secondary); }
+.rendered-markdown .token.tag,
+.rendered-markdown .token.selector { color: var(--color-accent-red); }
+.rendered-markdown .token.property,
+.rendered-markdown .token.attr-name { color: var(--color-accent-orange); }
+.rendered-markdown .token.regex,
+.rendered-markdown .token.important { color: var(--color-accent-orange); }
+.rendered-markdown .token.builtin { color: var(--color-accent-blue); }
+
+/* Tables */
+.rendered-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+  font-size: 0.75rem;
+}
+
+.rendered-markdown th {
+  background: var(--color-bg-tertiary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.rendered-markdown th,
+.rendered-markdown td {
+  border: 1px solid var(--color-border);
+  padding: 0.3rem 0.5rem;
+}
+
+.rendered-markdown tr:nth-child(even) {
+  background: var(--color-bg-secondary);
+}
+
+/* CSV table wrapper */
+.csv-table-wrapper {
+  overflow-x: auto;
+}
+
+.csv-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--font-family-mono);
+  font-size: 0.75rem;
+}
+
+.csv-table th {
+  background: var(--color-bg-tertiary);
+  font-weight: 600;
+  text-align: left;
+}
+
+.csv-table th,
+.csv-table td {
+  border: 1px solid var(--color-border);
+  padding: 0.3rem 0.5rem;
+  white-space: nowrap;
+}
+
+.csv-table tr:nth-child(even) {
+  background: var(--color-bg-secondary);
+}
+
+/* Images */
+.rendered-markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid diagrams — server-rendered SVGs */
+.rendered-markdown .mermaid-diagram {
+  margin: 0.75rem 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.rendered-markdown .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Source fallback for render errors */
+.rendered-markdown .mermaid-source {
+  font-family: var(--font-family-mono);
+  font-size: 0.7rem;
+  color: var(--color-text-tertiary);
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+}
+
+/* Mentions */
+.rendered-markdown .mention {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rendered-markdown .mention-agent { color: var(--color-accent-blue); }
+.rendered-markdown .mention-project { color: var(--color-accent-green); }
+.rendered-markdown .mention-task { color: var(--color-accent-orange); }
+.rendered-markdown .mention-file { color: var(--color-accent-purple); }
+
+.rendered-markdown .mention:hover {
+  text-decoration: underline;
+}
+
+/* Strong & Em */
+.rendered-markdown strong {
+  font-weight: 600;
+}
+
+.rendered-markdown em {
+  font-style: italic;
+}
+
+.rendered-markdown del {
+  text-decoration: line-through;
+  color: var(--color-text-tertiary);
+}
+
+/* MathML - ensure reasonable sizing */
+.rendered-markdown math {
+  font-size: 1em;
+}
+
+.rendered-markdown math[display="block"] {
+  display: block;
+  margin: 0.5rem 0;
+  text-align: center;
+}
