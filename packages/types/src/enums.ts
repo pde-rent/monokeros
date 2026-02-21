@@ -213,3 +213,9 @@ export enum AgentLifecycle {
   STANDBY = 'standby',
   DORMANT = 'dormant',
 }
+
+export enum ArtifactType {
+  FILE = 'file',
+  URL = 'url',
+  GIT_REF = 'git_ref',
+}

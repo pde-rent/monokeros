@@ -140,13 +140,13 @@ Each agent member drive is initialized with system files that define the agent's
 | `AGENTS.md` | Team roster and agent roles within the workspace |
 | `SKILLS.md` | Enumerated capabilities and tools the agent can use |
 | `FOUNDATION.md` | Foundational knowledge about the workspace and norms |
-| `config.toml` | Machine-readable config: model settings, daemon parameters |
+| `config.toml` | Machine-readable config: model settings, runtime parameters |
 | `MONOKEROS.md` | Platform-level instructions injected by MonokerOS |
 | `avatar.svg` / `avatar.png` | Agent's visual avatar |
 
 The `KNOWLEDGE/` directory is also protected and contains domain knowledge documents that agents can reference.
 
-These files are read by the [daemon](../technical/daemon.md) at startup to construct the agent's system prompt.
+These files are read by the [OpenClaw service](../technical/daemon.md) to construct the agent's system prompt.
 
 ## Context Menu
 

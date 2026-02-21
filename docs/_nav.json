@@ -48,7 +48,7 @@
         { "title": "REST API", "path": "technical/api" },
         { "title": "WebSocket Protocol", "path": "technical/websocket" },
         { "title": "Authentication", "path": "technical/auth" },
-        { "title": "Daemon System", "path": "technical/daemon" },
+        { "title": "OpenClaw Service", "path": "technical/daemon" },
         { "title": "MCP Server", "path": "technical/mcp" },
         { "title": "Rendering Pipeline", "path": "technical/rendering" }
       ]

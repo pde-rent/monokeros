@@ -69,7 +69,7 @@ graph LR
 
     subgraph MK["MonokerOS"]
         WS[Workspace]
-        AG[Agent + Daemon]
+        AG[Agent]
         DR[Drive]
         CH[Chat + WebSocket]
         MO[Mono Dispatcher]
@@ -86,18 +86,18 @@ graph LR
 | OS Concept | MonokerOS Equivalent | Description |
 |---|---|---|
 | User session / namespace | **Workspace** | Isolated environment with its own agents, teams, projects, and drives |
-| Process | **Agent (ZeroClaw Daemon)** | Each agent runs as its own `Bun.spawn` child process with independent state |
+| Process | **Agent (OpenClaw Service)** | Each agent is managed by the in-process OpenClaw service with independent conversation state |
 | Filesystem | **Drive** | Hierarchical file storage scoped to members, teams, projects, or workspace |
-| IPC / pipes | **Chat** | Real-time WebSocket messaging with NDJSON streaming for agent responses |
+| IPC / pipes | **Chat** | Real-time WebSocket messaging with SSE-based streaming for agent responses |
 | Scheduler | **Mono (Dispatcher)** | Routes user requests to the appropriate agent, delegates PM work to Keros |
-| Init system | **Reconciler** | Watches desired state, manages agent daemon lifecycle (start/stop/restart) |
+| Init system | **Reconciler** | Watches desired state, provisions agent workspaces and manages lifecycle |
 
 ---
 
 ## Core Pillars
 
 ### Agents
-Every AI agent is a first-class citizen with a name, title, specialization, personality ("soul"), skills, and its own daemon process. Agents can read/write files, search the web, use tools, and collaborate with each other.
+Every AI agent is a first-class citizen with a name, title, specialization, personality ("soul"), skills, and its own runtime managed by the OpenClaw service. Agents can read/write files, search the web, use tools, and collaborate with each other.
 
 Read more: [Agents](core-concepts/agents.md)
 
@@ -117,7 +117,7 @@ A hierarchical file system with four scope levels: personal (per-agent), team, p
 Read more: [Drives](core-concepts/drives.md)
 
 ### Chat
-Real-time messaging between humans and agents, with WebSocket-driven streaming. Agent responses stream as NDJSON events with thinking status, tool usage indicators, and incremental content delivery. Supports markdown with LaTeX math, Mermaid diagrams, syntax-highlighted code, and @mentions.
+Real-time messaging between humans and agents, with WebSocket-driven streaming. Agent responses stream as SSE events with thinking status, tool usage indicators, and incremental content delivery. Supports markdown with LaTeX math, Mermaid diagrams, syntax-highlighted code, and @mentions.
 
 Read more: [Chat & Messaging](features/chat.md)
 
@@ -132,9 +132,7 @@ graph TB
     NestJS["NestJS 11 API<br/>(Bun Runtime)"]
     WS["WebSocket<br/>Multi-Gateway"]
     Store["Mock Store<br/>(future: SQLite)"]
-    D1["ZeroClaw Daemon<br/>Agent 1"]
-    D2["ZeroClaw Daemon<br/>Agent 2"]
-    DN["ZeroClaw Daemon<br/>Agent N"]
+    OCS["OpenClaw Service<br/>Agent Runtime"]
     LLM["LLM Provider<br/>(OpenAI-compatible)"]
     MCP["MCP Server<br/>(9 tool categories)"]
 
@@ -143,16 +141,13 @@ graph TB
     NextJS -->|REST API| NestJS
     WS --- NestJS
     NestJS -->|CRUD| Store
-    NestJS -->|HTTP + webhook secret| D1
-    NestJS -->|HTTP + webhook secret| D2
-    NestJS -->|HTTP + webhook secret| DN
-    D1 & D2 & DN -->|OpenAI API| LLM
-    D1 & D2 & DN -->|tool calls| NestJS
+    NestJS --- OCS
+    OCS -->|"SSE streaming"| LLM
     MCP -->|REST API| NestJS
 
 ```
 
-The platform is a TurboRepo monorepo with 2 apps and 10 shared packages. The API runs on Bun with NestJS, agents run as independent child processes, and the frontend is a Next.js 15 app with TurboPack and Tailwind CSS v4.
+The platform is a TurboRepo monorepo with 2 apps and 10 shared packages. The API runs on Bun with NestJS, agents are managed by the in-process OpenClaw service, and the frontend is a Next.js 15 app with TurboPack and Tailwind CSS v4.
 
 Read more: [System Architecture](architecture/overview.md) | [Monorepo Structure](architecture/monorepo.md) | [Design Inspirations](architecture/inspirations.md)
 
@@ -175,12 +170,12 @@ Read more: [System Architecture](architecture/overview.md) | [Monorepo Structure
 
 | Section | Description |
 |---|---|
-| [System Architecture](architecture/overview.md) | How the pieces fit together -- layers, daemons, WebSockets, rendering |
+| [System Architecture](architecture/overview.md) | How the pieces fit together -- layers, agent runtime, WebSockets, rendering |
 | [Monorepo Structure](architecture/monorepo.md) | Package dependency graph, tooling, source-level imports |
 | [Design Inspirations](architecture/inspirations.md) | Kubernetes, OpenClaw, and Jira/Linear parallels explained |
 | [REST API](technical/api.md) | Workspace-scoped HTTP endpoints |
 | [WebSocket Protocol](technical/websocket.md) | Real-time event system |
 | [Authentication](technical/auth.md) | JWT tokens, API keys (`mk_` prefix), RBAC |
-| [Daemon System](technical/daemon.md) | ZeroClaw child process architecture |
+| [OpenClaw Service](technical/daemon.md) | Agent runtime architecture |
 | [MCP Server](technical/mcp.md) | Model Context Protocol integration |
 | [Rendering Pipeline](technical/rendering.md) | Markdown, LaTeX, Mermaid, and mention processing |

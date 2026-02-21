@@ -127,38 +127,38 @@ flowchart LR
     M -->|"Forward"| SL
 ```
 
-## OpenClaw / ZeroClaw Evolution
+## OpenClaw Evolution
 
-**Current state**: Agents run as embedded [ZeroClaw daemons](../technical/daemon.md) -- child processes spawned by the API server. See the daemon documentation for details.
+**Current state**: Agents are managed by the [OpenClaw service](../technical/daemon.md), which runs in-process within the NestJS API server. It handles LLM communication via SSE streaming, tool calling, and conversation history.
 
 **Planned**:
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **OpenClaw backend** | Standalone agent orchestration service replacing embedded daemons | High |
-| **Agent pools** | Pre-warmed agent processes for faster cold starts | Medium |
+| **OpenClaw Docker gateway** | Standalone Docker container for agent execution, decoupled from the API server | High |
+| **Agent pools** | Pre-warmed agent containers for faster cold starts | Medium |
 | **Distributed execution** | Run agents across multiple machines | Medium |
-| **Agent-to-agent communication** | Direct messaging between agent daemons | Medium |
-| **Persistent daemon state** | Survive API restarts without losing conversation context | High |
+| **Agent-to-agent communication** | Direct messaging between agents | Medium |
+| **Persistent conversation state** | Survive API restarts without losing conversation context | High |
 
 ```mermaid
 flowchart TD
-    subgraph Current["Current: ZeroClaw (Embedded)"]
-        API1[API Server] -->|"Bun.spawn"| D1[Daemon 1]
-        API1 -->|"Bun.spawn"| D2[Daemon 2]
+    subgraph Current["Current: In-Process Service"]
+        API1[API Server] --- OCS[OpenClawService]
+        OCS -->|"SSE"| LLM1[LLM Provider]
     end
 
-    subgraph Future["Future: OpenClaw (Standalone)"]
-        API2[API Server] -->|gRPC| OC[OpenClaw Service]
-        OC --> P1[Agent Pool 1]
-        OC --> P2[Agent Pool 2]
-        OC --> P3[Agent Pool N]
+    subgraph Future["Future: Docker Gateway"]
+        API2[API Server] -->|HTTP| GW[OpenClaw Gateway Container]
+        GW --> P1[Agent Pool 1]
+        GW --> P2[Agent Pool 2]
+        GW --> P3[Agent Pool N]
     end
 ```
 
 ## Agent Capabilities
 
-**Current state**: Agents can search the web, read/write files, search knowledge, and (with admin context) manage workspace entities. See [Daemon System](../technical/daemon.md) for current tools.
+**Current state**: Agents can search the web, read/write files, search knowledge, and (with admin context) manage workspace entities. See [OpenClaw Service](../technical/daemon.md) for current tools.
 
 **Planned**:
 
@@ -186,7 +186,7 @@ flowchart TD
 
 ## Monitoring & Observability
 
-**Current state**: Basic health check endpoints on daemons. No centralized monitoring.
+**Current state**: Basic agent status tracking via the OpenClaw service. No centralized monitoring.
 
 **Planned**:
 
@@ -196,11 +196,11 @@ flowchart TD
 | **Cost tracking** | Per-agent and per-workspace LLM cost monitoring | High |
 | **Audit logs** | Track all workspace changes with who/what/when | Medium |
 | **Usage analytics** | Message volume, active agents, project progress metrics | Medium |
-| **Alerting** | Notifications when agents error, costs spike, or daemons crash | Medium |
+| **Alerting** | Notifications when agents error or costs spike | Medium |
 
 ```mermaid
 flowchart LR
-    A[Agent Daemons] -->|Metrics| B[Monitoring Service]
+    A[OpenClaw Service] -->|Metrics| B[Monitoring Service]
     C[API Server] -->|Logs| B
     B --> D[Dashboard UI]
     B --> E[Cost Reports]
@@ -270,7 +270,7 @@ Interested in contributing to any of these features? Check the repository for op
 ## Related Documentation
 
 - [System Overview](../architecture/overview.md) -- Current architecture
-- [Daemon System](../technical/daemon.md) -- Current agent execution model
+- [OpenClaw Service](../technical/daemon.md) -- Current agent execution model
 - [Authentication](../technical/auth.md) -- Current auth system
 - [File Management](../features/file-management.md) -- Current file storage
 - [AI Providers](../features/ai-providers.md) -- Current provider support

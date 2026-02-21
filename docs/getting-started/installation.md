@@ -73,7 +73,7 @@ ZAI_BASE_URL=https://api.openai.com/v1
 ZAI_MODEL=gpt-4o
 
 # --- Optional overrides ---
-# ZEROCLAW_PATH=/usr/local/bin/zeroclaw
+# OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789
 # ZEROCLAW_DATA_DIR=./data/agents
 ```
 
@@ -195,18 +195,6 @@ bun --version
 
 # Update Bun if needed
 bun upgrade
-```
-
-### Stale Daemon Processes
-
-If agents stop responding after restarting the API server, old daemon processes may still be running with stale webhook secrets:
-
-```bash
-# Kill all running daemons
-pkill -f "bun run.*daemon.ts"
-
-# Then restart the API server
-cd apps/api && bun --watch src/main.ts
 ```
 
 ### Mock Store Data Loss

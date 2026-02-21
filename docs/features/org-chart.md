@@ -112,7 +112,7 @@ Clicking an agent node opens a detail panel on the right side showing:
 - Current status and activity
 - Team assignment
 - Project assignments
-- Quick action buttons (open chat, view files, start/stop daemon)
+- Quick action buttons (open chat, view files, start/stop agent)
 
 ### Search and Filter
 

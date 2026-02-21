@@ -73,6 +73,8 @@ graph TB
 | `gates` | `SDLCGate[]` | Quality checkpoints between phases |
 | `assignedTeamIds` | `string[]` | Teams assigned to this project |
 | `assignedMemberIds` | `string[]` | Individual agents assigned to this project |
+| `gitRepo` | `GitRepoBinding \| null` | Bound git repository (URL, default branch, provider) |
+| `definitionOfDone` | `DoDCriterion[]` | Project-level definition of done criteria |
 | `createdById` | `string` | Agent or human who created the project |
 | `conversationId` | `string \| null` | Associated project chat channel |
 | `createdAt` | `string` | ISO 8601 creation timestamp |
@@ -190,7 +192,7 @@ Tasks are the atomic unit of work within a project. They represent a specific pi
 | `title` | `string` | Task title |
 | `description` | `string` | Detailed description |
 | `type` | `string \| null` | Task type (e.g., `feature`, `bug`, `design`) |
-| `projectId` | `string` | Parent project |
+| `projectId` | `string \| null` | Parent project (null for detached/orphaned tasks) |
 | `status` | `TaskStatus` | Current status in the workflow pipeline |
 | `priority` | `TaskPriority` | Urgency level |
 | `assigneeIds` | `string[]` | Assigned agents |
@@ -201,6 +203,9 @@ Tasks are the atomic unit of work within a project. They represent a specific pi
 | `crossValidation` | `CrossValidation \| null` | Cross-validation results, if applicable |
 | `requiresHumanAcceptance` | `boolean` | Whether a human must accept the result |
 | `humanAcceptance` | `HumanAcceptance \| null` | Human review status and feedback |
+| `acceptanceCriteria` | `AcceptanceCriterion[]` | Checklist of criteria for task completion |
+| `inputs` | `TaskArtifact[]` | Expected input artifacts (files, URLs, git refs) |
+| `outputs` | `TaskArtifact[]` | Produced output artifacts (files, URLs, git refs) |
 | `conversationId` | `string \| null` | Associated task thread for discussion |
 | `commentCount` | `number` | Number of comments on the task |
 | `createdAt` | `string` | ISO 8601 creation timestamp |
@@ -321,6 +326,76 @@ The `HumanAcceptance` record includes the reviewer's ID, their feedback, and the
 
 ---
 
+## Acceptance Criteria
+
+Tasks can define acceptance criteria -- a checklist of conditions that must be met for the task to be considered complete.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique criterion identifier |
+| `description` | `string` | What must be true for this criterion to pass |
+| `met` | `boolean` | Whether this criterion has been satisfied |
+| `verifiedBy` | `string \| null` | Member who verified this criterion |
+| `verifiedAt` | `string \| null` | When verification occurred |
+
+Acceptance criteria are set when a task is created (or updated) and verified during the review process. They are distinct from cross-validation, which compares independent agent outputs; acceptance criteria define explicit pass/fail conditions.
+
+---
+
+## Task Artifacts (Inputs & Outputs)
+
+Tasks track their **inputs** (what they need to start) and **outputs** (what they produce). Artifacts can be files, URLs, or git references.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique artifact identifier |
+| `type` | `ArtifactType` | `file`, `url`, or `git_ref` |
+| `label` | `string` | Human-readable label for this artifact |
+| `path` | `string \| null` | File path within the project drive (for `file` type) |
+| `url` | `string \| null` | Any URL (for `url` type) |
+| `gitRef` | `GitRef \| null` | Structured git reference (for `git_ref` type) |
+
+### Artifact Types
+
+| Type | Use Case | Key Fields |
+|------|----------|------------|
+| `file` | Files in the project drive | `path` |
+| `url` | External links, documentation, APIs | `url` |
+| `git_ref` | Git repositories, branches, commits | `gitRef.repo`, `gitRef.branch`, `gitRef.commit` |
+
+### Storage Rules
+
+- **Project tasks**: Artifact files are stored in the project's [drive](./drives.md). There are no per-task folders -- all task artifacts share the project drive to avoid filesystem bloat.
+- **Detached tasks** (no `projectId`): Artifact files use the workspace root drive.
+
+---
+
+## Git Repository Binding
+
+Projects can be bound to a git repository, connecting the project's tasks and artifacts to a specific codebase.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | `string` | Git remote URL |
+| `defaultBranch` | `string` | Default branch name (e.g., `main`) |
+| `provider` | `string \| null` | Provider hint (e.g., `github`, `gitlab`) |
+
+When a project has a `gitRepo` binding, task artifacts of type `git_ref` can reference branches, commits, and file paths within that repository.
+
+---
+
+## Definition of Done
+
+Projects can define a **definition of done** -- project-level criteria that apply to all tasks. These are distinct from per-task acceptance criteria; the DoD represents the organization's quality bar.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Unique criterion identifier |
+| `description` | `string` | What must be true (e.g., "All tests pass", "Code reviewed") |
+| `required` | `boolean` | Whether this criterion is mandatory |
+
+---
+
 ## Project Views
 
 MonokerOS provides four view modes for visualizing project work:
@@ -423,9 +498,13 @@ spec:
   crossValidation:
     enabled: true
     minReviewers: 2
+  acceptanceCriteria:
+    - "Implementation matches the design spec"
+    - "Unit tests pass with >80% coverage"
+    - "No lint warnings"
 ```
 
-Task templates define default values for common task patterns, reducing manual configuration and ensuring consistency.
+Task templates define default values for common task patterns, reducing manual configuration and ensuring consistency. The `acceptanceCriteria` array provides template criteria descriptions that are copied onto each task created from the template.
 
 ---
 
@@ -480,6 +559,19 @@ spec:
     autoCreate: true
   defaults:
     priority: medium
+  gitRepo:
+    url: https://github.com/acme-corp/website
+    defaultBranch: main
+    provider: github
+  definitionOfDone:
+    - description: "All acceptance criteria met"
+      required: true
+    - description: "Code reviewed by at least one peer"
+      required: true
+    - description: "No critical or high bugs open"
+      required: true
+    - description: "Documentation updated"
+      required: false
 ```
 
 ---

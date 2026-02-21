@@ -1,6 +1,6 @@
 # System Architecture
 
-MonokerOS follows a three-layer architecture: a React-based presentation tier, a NestJS application tier running on Bun, and a data tier that currently uses an in-memory mock store (with SQLite planned). Agent intelligence is provided by ZeroClaw daemon processes -- one per agent -- that communicate with LLM providers via the OpenAI-compatible API pattern.
+MonokerOS follows a three-layer architecture: a React-based presentation tier, a NestJS application tier running on Bun, and a data tier that currently uses an in-memory mock store (with SQLite planned). Agent intelligence is provided by the OpenClaw service -- an in-process NestJS service that calls LLM providers directly via SSE streaming using the OpenAI-compatible API pattern.
 
 ---
 
@@ -18,7 +18,7 @@ graph TB
         NestJS["NestJS 11 on Bun<br/>REST Controllers"]
         Guards["AuthGuard<br/>PermissionsGuard"]
         WS["WebSocket Layer"]
-        ZCS["ZeroClawService<br/>Daemon Manager"]
+        OCS["OpenClawService<br/>Agent Runtime"]
         ChatGW["ChatGateway"]
         MemberGW["MembersGateway"]
         TaskGW["TasksGateway"]
@@ -29,12 +29,6 @@ graph TB
     subgraph Data["Data Layer"]
         Store["MockStore<br/>(in-memory)"]
         FS["Filesystem<br/>Agent Drives"]
-    end
-
-    subgraph Daemons["Agent Runtime"]
-        D1["ZeroClaw Daemon<br/>Agent: Neo"]
-        D2["ZeroClaw Daemon<br/>Agent: Elliot"]
-        DN["ZeroClaw Daemon<br/>Agent: Keros"]
     end
 
     subgraph External["External Services"]
@@ -54,15 +48,11 @@ graph TB
 
     NestJS -->|CRUD| Store
     NestJS -->|read/write| FS
-    NestJS -->|spawn + manage| ZCS
-    ZCS -->|HTTP POST /webhook<br/>+ webhook secret| D1 & D2 & DN
+    NestJS --> OCS
+    OCS -->|"SSE streaming"| LLM
+    OCS -->|"tool calls"| WebSearch & WebRead
 
-    D1 & D2 & DN -->|NDJSON stream| ZCS
-    D1 & D2 & DN -->|chat/completions| LLM
-    D1 & D2 & DN -->|tool calls| WebSearch & WebRead
-    D1 & D2 & DN -->|file_read, file_write<br/>via internal API| NestJS
-
-    ZCS -->|stream events| ChatGW
+    OCS -->|stream events| ChatGW
     ChatGW -->|WebSocket push| Browser
 
 ```
@@ -99,12 +89,12 @@ graph LR
         TKM["TasksModule"]
         CM["ChatModule"]
         FM["FilesModule"]
-        ZM["ZeroClawModule"]
+        OCM["OpenClawModule"]
         NM["NotificationsModule"]
         KM["KnowledgeModule"]
     end
 
-    AM -->|guards all| MM & TM & PM & TKM & CM & FM & ZM & NM & KM
+    AM -->|guards all| MM & TM & PM & TKM & CM & FM & OCM & NM & KM
 
 ```
 
@@ -176,77 +166,61 @@ The `BunWsAdapter` maintains an array of connect callbacks -- one per registered
 
 ---
 
-## Daemon Architecture
+## Agent Runtime Architecture
 
-Each AI agent runs as its own **ZeroClaw daemon** -- a standalone Bun HTTP server spawned as a child process via `Bun.spawn`. This isolation provides:
+Agent intelligence is provided by **OpenClawService** -- an in-process NestJS service that calls LLM providers directly. There are no child processes, no webhooks, and no NDJSON. The service runs within the NestJS API process and streams LLM responses via SSE (Server-Sent Events).
 
-- **Independent failure domains** -- one agent crashing does not affect others
-- **Per-agent conversation state** -- each daemon maintains its own bounded message history
+Key characteristics:
+
+- **In-process execution** -- no separate daemon processes to manage or monitor
+- **Per-agent conversation state** -- each agent maintains its own bounded message history
 - **Independent LLM configuration** -- agents can use different models and providers
-- **Security isolation** -- each daemon gets a unique `ZEROCLAW_WEBHOOK_SECRET`
+- **SSE streaming** -- responses are streamed directly from the LLM provider to the client via WebSocket
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant WS as WebSocket
     participant API as NestJS API
-    participant ZCS as ZeroClawService
-    participant D as ZeroClaw Daemon
+    participant OCS as OpenClawService
     participant LLM as LLM Provider
 
     U->>WS: Send chat message
     WS->>API: ChatGateway receives
     API->>API: Save user message to store
-    API->>ZCS: Forward to agent daemon
-    ZCS->>D: POST /webhook (+ secret)
-    D->>LLM: chat/completions (with tools)
-    D-->>ZCS: NDJSON stream begins
+    API->>OCS: Forward to agent service
+    OCS->>LLM: chat/completions (SSE streaming, with tools)
 
     loop Tool Calling Loop (max 5 rounds)
-        LLM-->>D: tool_calls response
-        D-->>ZCS: tool_start event
-        D->>API: Execute tool (file_read, web_search, etc.)
-        API-->>D: Tool result
-        D-->>ZCS: tool_end event
-        D->>LLM: chat/completions (with tool results)
+        LLM-->>OCS: tool_calls response (SSE)
+        OCS->>OCS: Execute tool (web_search, file_read, etc.)
+        OCS->>WS: chat:tool-start event
+        OCS->>WS: chat:tool-end event
+        OCS->>LLM: chat/completions (with tool results, SSE)
     end
 
-    LLM-->>D: Final text response
-    D-->>ZCS: content events (streamed paragraphs)
-    D-->>ZCS: done event
-    ZCS->>API: Save agent response to store
-    ZCS->>WS: chat:stream-chunk events
-    ZCS->>WS: chat:stream-end event
+    LLM-->>OCS: Final text response (SSE)
+    OCS->>API: Save agent response to store
+    OCS->>WS: chat:stream-chunk events
+    OCS->>WS: chat:stream-end event
     WS-->>U: Real-time response display
 ```
 
-### Daemon Startup
+### Agent Provisioning
 
-When an agent is started, `ZeroClawService`:
-1. Generates a unique `ZEROCLAW_WEBHOOK_SECRET` via `crypto.randomUUID()`
-2. Writes `config.toml`, `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` to the agent's runtime directory
-3. Spawns the daemon with `Bun.spawn(['bun', 'run', 'daemon.ts'], { cwd, env })`
-4. Waits for the `/health` endpoint to respond before marking the agent as running
+When an agent is started, `OpenClawService`:
+1. Loads the agent's configuration including model settings and provider credentials
+2. Builds the system prompt from `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` in the agent's runtime directory
+3. Registers the agent as active and ready to receive messages
+4. Resolves the LLM provider chain (agent override, workspace provider, environment default)
 
-### NDJSON Streaming Protocol
+### SSE Streaming
 
-The daemon responds to `/webhook` with a chunked NDJSON stream. Each line is a JSON object with a `type` field:
-
-```
-{"type":"status","data":{"phase":"thinking"}}
-{"type":"tool_start","data":{"id":"call_1","name":"web_search","args":{"query":"React 19"}}}
-{"type":"tool_end","data":{"id":"call_1","name":"web_search","durationMs":1523}}
-{"type":"status","data":{"phase":"reflecting"}}
-{"type":"content","data":{"text":"Based on my research..."}}
-{"type":"content","data":{"text":"Based on my research...\n\nReact 19 introduces..."}}
-{"type":"done","data":{"response":"Based on my research...\n\nReact 19 introduces..."}}
-```
-
-Content events are **accumulated** -- each `content` event contains all text up to that point, not just the new chunk. This simplifies client-side rendering.
+OpenClawService sends requests to the LLM provider with `stream: true` and parses the SSE response in real time. Each SSE event contains a delta with either content tokens or tool call fragments. The service assembles these deltas into complete tool calls or content blocks and emits corresponding WebSocket events to the client as they arrive.
 
 ### Available Tools
 
-Each daemon has access to tools based on its role:
+Each agent has access to tools based on its role:
 
 | Tool Category | Tools | Available To |
 |---|---|---|
@@ -254,10 +228,6 @@ Each daemon has access to tools based on its role:
 | **Admin** | `create_team`, `create_member`, `update_team`, `create_project`, `update_workspace` | Agents with admin context |
 | **PM** | `create_task`, `assign_task`, `move_task`, `update_task`, `list_tasks`, `list_members`, `list_teams`, `list_projects`, `update_project`, `update_gate` | Keros (project manager) |
 | **Delegation** | `delegate_to_keros` | Mono (dispatcher) |
-
-### Critical Configuration: `idleTimeout`
-
-`Bun.serve()` defaults to a 10-second `idleTimeout`. Since LLM API calls routinely exceed this, the daemon sets `idleTimeout: 255` (the maximum value in seconds). Without this, Bun silently kills the connection mid-flight, causing the "Thinking..." indicator to persist forever in the UI.
 
 ---
 
@@ -335,7 +305,6 @@ graph TB
     subgraph Auth["Authentication"]
         JWT["JWT Token<br/>(short-lived)"]
         APIKey["API Key<br/>(mk_ prefix)"]
-        WHS["Webhook Secret<br/>(daemon ↔ API)"]
     end
 
     subgraph RBAC["Authorization"]
@@ -353,13 +322,11 @@ graph TB
     AG -->|sets request.user| RBAC
     WR -->|checked by| PG
     PG -->|matches against| PERM
-    WHS -->|verified in| DH["Daemon /webhook handler"]
 
 ```
 
 - **JWT tokens** authenticate human users. The payload contains `sub` (user ID), `email`, and `name`. Workspace role is resolved server-side per request.
 - **API keys** (prefixed `mk_`) authenticate programmatic access. Each key is scoped to a workspace and member, carrying the member's role.
-- **Webhook secrets** secure daemon-to-API communication. Each daemon receives a unique `crypto.randomUUID()` secret at spawn time, validated on every `/webhook` request. After an API server restart, old daemons have stale secrets and return 401 -- all daemons must be killed before restarting the API.
 - The global `AuthGuard` is applied to every route by default. Only routes explicitly decorated with `@Public()` bypass authentication.
 
 ---
@@ -368,6 +335,6 @@ graph TB
 
 - [Monorepo Structure](monorepo.md) -- Package dependency graph and tooling
 - [Design Inspirations](inspirations.md) -- Kubernetes, OpenClaw, and Jira/Linear parallels
-- [Daemon System](../technical/daemon.md) -- Deep dive into ZeroClaw internals
+- [OpenClaw Service](../technical/daemon.md) -- Agent runtime architecture
 - [WebSocket Protocol](../technical/websocket.md) -- Event format and gateway details
 - [Authentication](../technical/auth.md) -- JWT, API keys, and RBAC details

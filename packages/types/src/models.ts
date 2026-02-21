@@ -1,5 +1,6 @@
 import {
   AiProvider,
+  ArtifactType,
   MemberStatus,
   MemberType,
   TaskStatus,
@@ -136,6 +137,8 @@ export interface Project {
   gates: SDLCGate[];
   assignedTeamIds: string[];
   assignedMemberIds: string[];
+  gitRepo: GitRepoBinding | null;
+  definitionOfDone: DoDCriterion[];
   createdById: string;
   modifiedAt: string;
   conversationId: string | null;
@@ -158,13 +161,55 @@ export interface HumanAcceptance {
   reviewedAt: string | null;
 }
 
+/** A single acceptance criterion on a Task */
+export interface AcceptanceCriterion {
+  id: string;
+  description: string;
+  met: boolean;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+}
+
+/** A definition-of-done criterion on a Project (applies to all tasks) */
+export interface DoDCriterion {
+  id: string;
+  description: string;
+  required: boolean;
+}
+
+/** Git repository binding on a Project */
+export interface GitRepoBinding {
+  url: string;
+  defaultBranch: string;
+  provider: string | null;
+}
+
+/** A git reference (branch, commit, path within repo) */
+export interface GitRef {
+  repo: string;
+  branch: string | null;
+  commit: string | null;
+  path: string | null;
+}
+
+/** An artifact attached to a task as input or output.
+ *  Files reference paths in the project drive (or workspace drive for orphaned tasks). */
+export interface TaskArtifact {
+  id: string;
+  type: ArtifactType;
+  label: string;
+  path: string | null;
+  url: string | null;
+  gitRef: GitRef | null;
+}
+
 export interface Task {
   id: string;
   workspaceId: string;
   title: string;
   description: string;
   type: string | null;
-  projectId: string;
+  projectId: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   assigneeIds: string[];
@@ -175,6 +220,9 @@ export interface Task {
   crossValidation: CrossValidation | null;
   requiresHumanAcceptance: boolean;
   humanAcceptance: HumanAcceptance | null;
+  acceptanceCriteria: AcceptanceCriterion[];
+  inputs: TaskArtifact[];
+  outputs: TaskArtifact[];
   conversationId: string | null;
   commentCount: number;
   createdAt: string;

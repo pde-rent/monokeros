@@ -162,7 +162,7 @@ For providers that do not natively support OpenAI format, an intermediate proxy 
 
 ## Environment Variables
 
-These environment variables are read by the API server and passed to [daemons](../technical/daemon.md):
+These environment variables are read by the API server and used by the [OpenClaw service](../technical/daemon.md) for LLM calls:
 
 | Variable | Description |
 |----------|-------------|
@@ -174,7 +174,7 @@ Set these in `apps/api/.env` for local development.
 
 ## Related Documentation
 
-- [Daemon System](../technical/daemon.md) -- How daemons use provider config for LLM calls
+- [OpenClaw Service](../technical/daemon.md) -- How the agent runtime uses provider config for LLM calls
 - [Agents](../core-concepts/agents.md) -- Agent model configuration
 - [REST API](../technical/api.md) -- Provider management endpoints
 - [MCP Server](../technical/mcp.md) -- `workspace.add_provider` and `workspace.list_providers` tools

@@ -53,9 +53,9 @@ The `:slug` is the workspace's URL-safe identifier (e.g., `my-agency`).
 | POST | `/workspaces/:slug/members` | Create a new agent member |
 | PATCH | `/workspaces/:slug/members/:id` | Update member fields |
 | PATCH | `/workspaces/:slug/members/:id/status` | Update member status |
-| POST | `/workspaces/:slug/members/:id/start` | Start agent daemon |
-| POST | `/workspaces/:slug/members/:id/stop` | Stop agent daemon |
-| GET | `/workspaces/:slug/members/:id/runtime` | Get daemon runtime info |
+| POST | `/workspaces/:slug/members/:id/start` | Start agent |
+| POST | `/workspaces/:slug/members/:id/stop` | Stop agent |
+| GET | `/workspaces/:slug/members/:id/runtime` | Get agent runtime info |
 | POST | `/workspaces/:slug/members/:id/reroll-name` | Randomize agent name |
 | POST | `/workspaces/:slug/members/:id/reroll-identity` | Randomize full identity |
 
@@ -148,7 +148,7 @@ curl -X POST http://localhost:3001/api/workspaces/my-agency/conversations/conv-a
   }'
 ```
 
-Note: If the conversation includes an agent, sending a message triggers the [daemon](daemon.md) to generate a response. This can take up to 2 minutes for complex tool-calling chains.
+Note: If the conversation includes an agent, sending a message triggers the [OpenClaw service](daemon.md) to generate a response. This can take up to 2 minutes for complex tool-calling chains.
 
 ### Files
 

@@ -51,7 +51,7 @@ export class TasksController extends BaseCrudController<Task> {
     @Req() req: { user: JwtPayload; apiKey?: ApiKey; workspace: { id: string } },
   ) {
     // API key auth: agents can only create tasks in assigned projects (system agents exempt)
-    if (req.apiKey) {
+    if (req.apiKey && body.projectId) {
       const callerMember = this.store.members.get(req.user.sub);
       if (!callerMember?.system) {
         const project = this.store.projects.get(body.projectId);
@@ -70,7 +70,7 @@ export class TasksController extends BaseCrudController<Task> {
       title: body.title,
       description: body.description || '',
       type: body.type ?? null,
-      projectId: body.projectId,
+      projectId: body.projectId ?? null,
       status: TaskStatus.BACKLOG,
       priority: body.priority,
       assigneeIds: body.assigneeIds,
@@ -81,6 +81,15 @@ export class TasksController extends BaseCrudController<Task> {
       crossValidation: null,
       requiresHumanAcceptance: body.requiresHumanAcceptance,
       humanAcceptance: null,
+      acceptanceCriteria: (body.acceptanceCriteria ?? []).map((ac) => ({
+        id: generateId('ac'),
+        description: ac.description,
+        met: ac.met ?? false,
+        verifiedBy: null,
+        verifiedAt: null,
+      })),
+      inputs: (body.inputs ?? []).map((a) => ({ id: generateId('art'), ...a })),
+      outputs: [],
       conversationId: null,
       commentCount: 0,
       createdAt: now(),

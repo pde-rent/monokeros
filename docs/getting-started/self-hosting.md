@@ -11,7 +11,7 @@ MonokerOS currently runs as a development/preview platform with:
 - **In-memory mock store** -- all data lives in process memory and is lost on restart.
 - **Seed data** -- the Design Unlimited v2 workspace is auto-loaded on every API server boot.
 - **Single-user dev auth** -- any email + the password `password` grants access.
-- **Bun runtime** -- both the API and agent daemons run on Bun.
+- **Bun runtime** -- the API server runs on Bun.
 
 ```mermaid
 graph TB
@@ -21,25 +21,19 @@ graph TB
         API[NestJS API<br/>Port 3001]
         WS[WebSocket<br/>Port 3001]
         Mock[(Mock Store<br/>In-Memory)]
-        D1[Daemon 1]
-        D2[Daemon 2]
-        D3[Daemon N]
+        OCS[OpenClaw Service<br/>Agent Runtime]
         LLM[AI Provider API]
 
         Browser --> Web
         Web --> API
         Browser --> WS
         API --> Mock
-        API --> D1
-        API --> D2
-        API --> D3
-        D1 --> LLM
-        D2 --> LLM
-        D3 --> LLM
+        API --> OCS
+        OCS --> LLM
     end
 ```
 
-For a deeper look, see [System Overview](../architecture/overview.md) and [Daemon System](../technical/daemon.md).
+For a deeper look, see [System Overview](../architecture/overview.md) and [OpenClaw Service](../technical/daemon.md).
 
 ---
 
@@ -65,14 +59,8 @@ All environment variables are configured in `apps/api/.env`. Copy from `apps/api
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ZEROCLAW_PATH` | No | System default | Path to the ZeroClaw binary. |
+| `OPENCLAW_GATEWAY_URL` | No | `http://127.0.0.1:18789` | URL of the OpenClaw gateway (Docker container or local). |
 | `ZEROCLAW_DATA_DIR` | No | `./data/agents` | Directory for agent runtime data. |
-
-### Internal (Auto-Generated)
-
-| Variable | Scope | Description |
-|----------|-------|-------------|
-| `ZEROCLAW_WEBHOOK_SECRET` | Per daemon | UUID generated at daemon spawn time. Used to authenticate daemon-to-API webhook calls. Stale after API restart -- see [daemon lifecycle](#daemon-lifecycle). |
 
 ---
 
@@ -315,16 +303,6 @@ The API server is configured with CORS allowing `localhost:3000` by default. For
 origin: 'https://monokeros.example.com'
 ```
 
-### Webhook Secrets
-
-Each agent daemon receives a `ZEROCLAW_WEBHOOK_SECRET` (a UUID) at spawn time. The daemon includes this secret in its webhook callbacks to the API server, which validates it before processing. This prevents unauthorized processes from injecting events.
-
-**Important:** These secrets are generated in-memory. After an API server restart, running daemons hold stale secrets and their webhook calls will fail with 401 errors. Always kill daemons before restarting the API:
-
-```bash
-pkill -f "bun run.*daemon.ts"
-```
-
 ### Rate Limiting
 
 Rate limiting is not yet implemented in the API. For production deployments, apply rate limiting at the reverse proxy layer:
@@ -345,45 +323,27 @@ Set it as `JWT_SECRET` in your environment.
 
 ---
 
-## Daemon Lifecycle
+## Agent Lifecycle
 
-Agent daemons are spawned as child processes using `Bun.spawn`. Each daemon:
+The OpenClaw service runs in-process within the NestJS API server. Agent lifecycle is managed through the service's `start()`, `stop()`, and `restart()` methods.
 
-1. Receives environment variables including `ZEROCLAW_WEBHOOK_SECRET`, AI provider credentials, and agent configuration.
-2. Runs an HTTP server (`Bun.serve` with `idleTimeout: 255`) to handle incoming requests from the API.
-3. Forwards chat messages to the configured AI provider.
-4. Streams responses back via NDJSON.
-5. Outlives individual requests but does **not** outlive API server restarts gracefully.
+On startup, the service:
+1. Provisions all agents (creates workspace directories and writes identity files).
+2. Writes gateway configuration (`openclaw.json`).
+3. Marks all agents as `RUNNING`.
+4. Checks gateway health (if configured).
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Spawned: API creates daemon
-    Spawned --> Idle: Ready for requests
-    Idle --> Processing: Receives message
-    Processing --> Streaming: AI provider responds
-    Streaming --> Idle: Response complete
-    Idle --> Stale: API server restarts
-    Stale --> [*]: Must be killed
-    Idle --> [*]: Graceful shutdown
+    [*] --> Provisioning: API server starts
+    Provisioning --> Running: Agents provisioned
+    Running --> Processing: Message received
+    Processing --> Streaming: AI provider responds (SSE)
+    Streaming --> Running: Response complete
+    Running --> [*]: API server stops
 ```
 
-### Health Checks
-
-Daemons expose a health endpoint. The API server can verify daemon liveness before routing requests. A healthy daemon at 0% CPU that is not responding to messages is likely stuck due to the `idleTimeout` issue -- ensure `idleTimeout: 255` is set in the daemon's `Bun.serve` configuration.
-
-### Monitoring Daemons
-
-List running daemon processes:
-
-```bash
-ps aux | grep "daemon.ts"
-```
-
-Kill all daemons:
-
-```bash
-pkill -f "bun run.*daemon.ts"
-```
+Since the OpenClaw service is in-process, there are no child processes to manage. Restarting the API server cleanly restarts the agent runtime.
 
 ---
 
@@ -403,7 +363,7 @@ When a real database is implemented, the backup strategy will depend on the chos
 | SQLite | File-system copy of the `.sqlite` file (ensure no active writes), or Litestream for continuous replication. |
 
 Additional data to back up:
-- Agent runtime data (`ZEROCLAW_DATA_DIR`).
+- Agent runtime data (data directory, default `./data/agents`).
 - File drive contents (team and agent drives).
 - Environment configuration (`.env` file -- store securely, not in version control).
 
@@ -417,7 +377,7 @@ Additional data to back up:
 | Auth | JWT with dev fallback | JWT + OAuth2 (Google, GitHub, Microsoft) |
 | Deployment | Local `bun run dev` | Docker Compose |
 | TLS | None (localhost) | Reverse proxy (nginx/Caddy) |
-| Scaling | Single process | Horizontal (API) + daemon pool |
+| Scaling | Single process | Horizontal (API) + OpenClaw gateway |
 | Backups | N/A | pg_dump / Litestream |
 
 MonokerOS is under active development. Production deployment tooling, persistent storage, and multi-user auth will be added in upcoming releases. Check the [Roadmap](../roadmap/future.md) for planned milestones.
@@ -429,6 +389,6 @@ MonokerOS is under active development. Production deployment tooling, persistent
 - [Installation](./installation.md) -- initial setup and provider configuration
 - [Quick Start](./quick-start.md) -- first steps with the platform
 - [System Overview](../architecture/overview.md) -- architecture deep dive
-- [Daemon System](../technical/daemon.md) -- detailed daemon internals
+- [OpenClaw Service](../technical/daemon.md) -- agent runtime architecture
 - [WebSocket Protocol](../technical/websocket.md) -- real-time event reference
 - [Authentication](../technical/auth.md) -- JWT and API key details

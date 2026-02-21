@@ -157,13 +157,13 @@ System files are special files within member drives that define an [agent's](./a
 
 | File | Purpose | Used By |
 |------|---------|---------|
-| `SOUL.md` | Core personality and system prompt. Defines the agent's persona, tone, expertise boundaries, and behavioral rules. | Daemon (system prompt assembly) |
-| `IDENTITY.md` | Structured identity document: name, role, specialization, background narrative. | Daemon, UI (agent profile) |
-| `SKILLS.md` | Enumerated capabilities and tools the agent can use. | Daemon (tool permissions) |
-| `FOUNDATION.md` | Foundational knowledge about the workspace, projects, and norms. | Daemon (context) |
-| `AGENTS.md` | Team roster with all agents, roles, and specializations. | Daemon (inter-agent awareness) |
-| `MONOKEROS.md` | Platform-level instructions injected by MonokerOS. | Daemon (platform context) |
-| `config.toml` | Machine-readable configuration: model settings, daemon parameters. | Daemon (configuration) |
+| `SOUL.md` | Core personality and system prompt. Defines the agent's persona, tone, expertise boundaries, and behavioral rules. | OpenClaw (system prompt assembly) |
+| `IDENTITY.md` | Structured identity document: name, role, specialization, background narrative. | OpenClaw, UI (agent profile) |
+| `SKILLS.md` | Enumerated capabilities and tools the agent can use. | OpenClaw (tool permissions) |
+| `FOUNDATION.md` | Foundational knowledge about the workspace, projects, and norms. | OpenClaw (context) |
+| `AGENTS.md` | Team roster with all agents, roles, and specializations. | OpenClaw (inter-agent awareness) |
+| `MONOKEROS.md` | Platform-level instructions injected by MonokerOS. | OpenClaw (platform context) |
+| `config.toml` | Machine-readable configuration: model settings, runtime parameters. | OpenClaw (configuration) |
 | `avatar.svg` | Agent's visual avatar (SVG format). | UI (agent display) |
 | `avatar.png` | Agent's visual avatar (PNG format). | UI (agent display) |
 
@@ -187,7 +187,7 @@ flowchart LR
         KnowledgeDir["KNOWLEDGE/<br/>*.md files"]
     end
 
-    subgraph Daemon["ZeroClaw Daemon"]
+    subgraph Service["OpenClaw Service"]
         PromptBuilder["Prompt<br/>Builder"]
         ToolResolver["Tool<br/>Resolver"]
         ConfigLoader["Config<br/>Loader"]

@@ -115,8 +115,8 @@ flowchart TD
 | `members.create` | Create a new agent member with identity and model config |
 | `members.update` | Update member fields (name, title, team, model config) |
 | `members.update_status` | Change member status (idle, working, reviewing, blocked, offline) |
-| `members.start_agent` | Start a ZeroClaw agent daemon |
-| `members.stop_agent` | Stop a running agent daemon |
+| `members.start_agent` | Start an agent |
+| `members.stop_agent` | Stop a running agent |
 | `members.reroll_name` | Generate a new random name for an agent |
 | `members.reroll_identity` | Generate a completely new identity (name, gender, avatar) |
 
@@ -177,8 +177,8 @@ flowchart TD
 
 | Tool | Description |
 |------|-------------|
-| `agents.get_runtime` | Get daemon runtime status (port, PID, status, health check) |
-| `agents.list_runtimes` | List runtime status for all agent daemons |
+| `agents.get_runtime` | Get agent runtime status |
+| `agents.list_runtimes` | List runtime status for all agents |
 
 ### Knowledge Tools
 
@@ -199,7 +199,7 @@ The MCP server also exposes read-only resources for quick data access:
 
 ## How Agents Use MCP Tools
 
-While the MCP server is designed for external clients, the pattern is similar to how agents use tools internally through their [daemons](daemon.md). The key difference:
+While the MCP server is designed for external clients, the pattern is similar to how agents use tools internally through the [OpenClaw service](daemon.md). The key difference:
 
 ```mermaid
 flowchart TD
@@ -209,12 +209,12 @@ flowchart TD
     end
 
     subgraph Internal["Internal Agent Tool Use"]
-        I1[Agent Daemon] -->|"Direct HTTP"| I2[MonokerOS API]
+        I1[OpenClaw Service] -->|"Direct call"| I2[MonokerOS API]
     end
 ```
 
 - **MCP Server** -- External clients connect via stdio, tools are called through JSON-RPC, the MCP server translates to HTTP API calls.
-- **Agent Daemons** -- Internal agents call the API directly via HTTP from within their daemon process using the same REST endpoints.
+- **OpenClaw Service** -- Internal agents call the API directly from within the OpenClaw service using the same REST endpoints.
 
 ## Example Usage
 
@@ -271,6 +271,6 @@ Note: If the conversation has an agent participant, this call may take up to 2 m
 
 - [REST API](api.md) -- The underlying HTTP API that MCP tools call
 - [Authentication](auth.md) -- API key authentication for MCP
-- [Daemon System](daemon.md) -- Internal agent tool execution
+- [OpenClaw Service](daemon.md) -- Internal agent tool execution
 - [Chat & Messaging](../features/chat.md) -- Conversation and messaging details
 - [File Management](../features/file-management.md) -- File operations exposed as MCP tools

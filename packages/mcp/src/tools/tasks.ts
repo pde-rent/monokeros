@@ -43,7 +43,7 @@ export function registerTaskTools(server: McpServer, api: ApiClient) {
     {
       title: z.string().describe('Task title'),
       description: z.string().default('').describe('Task description'),
-      projectId: z.string().describe('Project this task belongs to'),
+      projectId: z.string().optional().describe('Project this task belongs to (omit for detached tasks)'),
       teamId: z.string().describe('Team responsible for the task'),
       phase: z.number().min(0).max(9).describe('SDLC phase number (0-9)'),
       priority: z

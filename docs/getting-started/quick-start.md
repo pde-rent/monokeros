@@ -79,22 +79,22 @@ The Chat tab is where you interact with AI agents directly.
 3. Type a message in the input field at the bottom.
 4. Press **Enter** or click **Send**.
 
-You will see the agent's response stream in real time. Behind the scenes, MonokerOS spawns a daemon process for the agent, routes your message through the configured AI provider, and streams the response back via WebSocket.
+You will see the agent's response stream in real time. Behind the scenes, the OpenClaw service routes your message through the configured AI provider and streams the response back via WebSocket.
 
 ```mermaid
 sequenceDiagram
     participant U as You
     participant W as Web App
     participant A as API Server
-    participant D as Agent Daemon
+    participant OC as OpenClaw Service
     participant P as AI Provider
 
     U->>W: Type message & send
     W->>A: POST /api/conversations/:id/messages
-    A->>D: Forward to daemon process
-    D->>P: Chat completion request
-    P-->>D: Stream response chunks
-    D-->>A: NDJSON stream
+    A->>OC: streamMessage(agentId, content)
+    OC->>P: POST /chat/completions (stream: true)
+    P-->>OC: SSE response chunks
+    OC-->>A: DaemonEvent stream
     A-->>W: WebSocket stream events
     W-->>U: Render tokens in real time
 ```
@@ -230,4 +230,4 @@ bun run lint
 - [Agents](../core-concepts/agents.md) -- understand agent configuration, personas, and capabilities
 - [Chat & Messaging](../features/chat.md) -- advanced chat features including streaming, context, and multi-agent conversations
 - [REST API](../technical/api.md) -- full API reference for programmatic access
-- [Daemon System](../technical/daemon.md) -- how agent processes are managed under the hood
+- [OpenClaw Service](../technical/daemon.md) -- how the agent runtime manages LLM calls

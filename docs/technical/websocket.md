@@ -167,23 +167,22 @@ sequenceDiagram
     participant User as Browser Client
     participant WS as WebSocket
     participant API as API Server
-    participant Daemon as ZeroClaw Daemon
+    participant OC as OpenClaw Service
     participant LLM as LLM Provider
 
     User->>WS: join("conv-123")
     User->>API: POST /conversations/conv-123/messages
     API->>API: Store user message
-    API->>Daemon: POST /webhook (NDJSON)
+    API->>OC: streamMessage(agentId, content)
     API->>WS: chat:stream-start
-    Daemon->>LLM: POST /chat/completions
-    LLM-->>Daemon: Response
-    Daemon-->>API: NDJSON: {type: "status", data: {phase: "thinking"}}
-    API-->>WS: chat:thinking-status {phase: "thinking"}
-    Daemon-->>API: NDJSON: {type: "content", data: {text: "Here is..."}}
+    OC->>LLM: POST /chat/completions (stream: true)
+    LLM-->>OC: SSE: data: {choices: [{delta: {content: "Here is..."}}]}
+    OC-->>API: DaemonEvent {type: "content", data: {text: "Here is..."}}
     API-->>WS: chat:stream-chunk {chunk: "Here is..."}
-    Daemon-->>API: NDJSON: {type: "content", data: {text: "Here is my full response..."}}
+    LLM-->>OC: SSE: data: {choices: [{delta: {content: " my full response..."}}]}
+    OC-->>API: DaemonEvent {type: "content", data: {text: "Here is my full response..."}}
     API-->>WS: chat:stream-chunk {chunk: "Here is my full response..."}
-    Daemon-->>API: NDJSON: {type: "done", data: {response: "..."}}
+    OC-->>API: DaemonEvent {type: "done", data: {response: "..."}}
     API->>API: Store agent message, render HTML
     API-->>WS: chat:stream-end {messageId, renderedHtml}
 ```
@@ -211,6 +210,6 @@ All gateways extend `BaseGateway`, which provides:
 ## Related Documentation
 
 - [Chat & Messaging](../features/chat.md) -- Chat event flow and streaming details
-- [Daemon System](daemon.md) -- NDJSON streaming from daemon to API
+- [OpenClaw Service](daemon.md) -- SSE streaming and agent runtime
 - [Authentication](auth.md) -- Token-based WebSocket auth
 - [REST API](api.md) -- HTTP endpoints for sending messages

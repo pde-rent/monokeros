@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   AiProvider,
+  ArtifactType,
   MemberStatus,
   TaskStatus,
   TaskPriority,
@@ -20,12 +21,48 @@ export const taskTypeDefinitionSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
+// Acceptance criterion schema
+export const acceptanceCriterionSchema = z.object({
+  description: z.string().min(1).max(1000),
+  met: z.boolean().default(false),
+});
+
+// Git reference schema
+export const gitRefSchema = z.object({
+  repo: z.string().min(1),
+  branch: z.string().nullable().default(null),
+  commit: z.string().nullable().default(null),
+  path: z.string().nullable().default(null),
+});
+
+// Task artifact schema
+export const taskArtifactSchema = z.object({
+  type: z.nativeEnum(ArtifactType),
+  label: z.string().min(1).max(200),
+  path: z.string().nullable().default(null),
+  url: z.string().nullable().default(null),
+  gitRef: gitRefSchema.nullable().default(null),
+});
+
+// Git repo binding schema
+export const gitRepoBindingSchema = z.object({
+  url: z.string().min(1),
+  defaultBranch: z.string().min(1).default('main'),
+  provider: z.string().nullable().default(null),
+});
+
+// Definition of done criterion schema
+export const dodCriterionSchema = z.object({
+  description: z.string().min(1).max(1000),
+  required: z.boolean().default(true),
+});
+
 // Task schemas
 export const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).default(''),
   type: z.string().min(1).max(50).nullable().default(null),
-  projectId: z.string(),
+  projectId: z.string().nullable().default(null),
   priority: z.nativeEnum(TaskPriority).default(TaskPriority.MEDIUM),
   assigneeIds: z.array(z.string()).default([]),
   teamId: z.string(),
@@ -33,6 +70,8 @@ export const createTaskSchema = z.object({
   dependencies: z.array(z.string()).default([]),
   offloadable: z.boolean().default(false),
   requiresHumanAcceptance: z.boolean().default(false),
+  acceptanceCriteria: z.array(acceptanceCriterionSchema).default([]),
+  inputs: z.array(taskArtifactSchema).default([]),
 });
 
 export const updateTaskSchema = z.object({
@@ -44,6 +83,9 @@ export const updateTaskSchema = z.object({
   dependencies: z.array(z.string()).optional(),
   offloadable: z.boolean().optional(),
   requiresHumanAcceptance: z.boolean().optional(),
+  acceptanceCriteria: z.array(acceptanceCriterionSchema).optional(),
+  inputs: z.array(taskArtifactSchema).optional(),
+  outputs: z.array(taskArtifactSchema).optional(),
 });
 
 export const moveTaskSchema = z.object({
@@ -134,6 +176,8 @@ export const createProjectSchema = z.object({
   phases: z.array(z.string().min(1)).min(1),
   assignedTeamIds: z.array(z.string()).default([]),
   assignedMemberIds: z.array(z.string()).default([]),
+  gitRepo: gitRepoBindingSchema.nullable().default(null),
+  definitionOfDone: z.array(dodCriterionSchema).default([]),
 });
 
 export const updateProjectSchema = z.object({
@@ -146,6 +190,8 @@ export const updateProjectSchema = z.object({
   status: z.nativeEnum(TaskStatus).optional(),
   assignedTeamIds: z.array(z.string()).optional(),
   assignedMemberIds: z.array(z.string()).optional(),
+  gitRepo: gitRepoBindingSchema.nullable().optional(),
+  definitionOfDone: z.array(dodCriterionSchema).optional(),
 });
 
 // Team schemas

@@ -100,6 +100,12 @@ export class ProjectsController extends BaseCrudController<Project> {
       })),
       assignedTeamIds: body.assignedTeamIds ?? [],
       assignedMemberIds: body.assignedMemberIds ?? [],
+      gitRepo: body.gitRepo ?? null,
+      definitionOfDone: (body.definitionOfDone ?? []).map((d) => ({
+        id: generateId('dod'),
+        description: d.description,
+        required: d.required ?? true,
+      })),
       createdById: req.user.sub,
       modifiedAt: timestamp,
       conversationId: null,

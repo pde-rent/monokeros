@@ -14,7 +14,7 @@ graph TB
         K7["Declarative YAML Manifests"]
     end
 
-    subgraph OC["OpenClaw / ZeroClaw<br/>Agentic AI"]
+    subgraph OC["OpenClaw<br/>Agentic AI"]
         O1["Autonomous Agents"]
         O2["Tool Use"]
         O3["Long-Term Memory"]
@@ -34,7 +34,7 @@ graph TB
 
     subgraph MK["MonokerOS<br/>Operating System for AI Agent Teams"]
         M1["Workspaces"]
-        M2["AI Agents with Daemons"]
+        M2["AI Agents"]
         M3["Teams & Org Chart"]
         M4["Drives & File System"]
         M5["Mono Dispatcher"]
@@ -75,15 +75,15 @@ MonokerOS borrows heavily from Kubernetes in its resource model, declarative con
 | Kubernetes | MonokerOS | Parallel |
 |---|---|---|
 | **Namespace** | **Workspace** | Isolated environment with its own set of resources. All resources are scoped within a workspace, just as Kubernetes resources are scoped within a namespace. Multi-tenancy boundary. |
-| **Pod / Service** | **Agent (+ ZeroClaw Daemon)** | The fundamental unit of execution. Each agent runs as its own process (a Bun child process), analogous to how each Pod runs its own container(s). Has lifecycle states, health checks, and restart policies. |
+| **Pod / Service** | **Agent (+ OpenClaw Service)** | The fundamental unit of execution. Each agent is managed by the OpenClaw service within the API process, analogous to how each Pod runs its own container(s). Has lifecycle states and status tracking. |
 | **Deployment / ReplicaSet** | **Team** | A logical grouping of Pods (agents) with a defined purpose. Teams organize agents by function (engineering, design, QA) just as Deployments organize replicas of a service. |
 | **PersistentVolume / PVC** | **Drive** | Shared storage that persists independently of agents. Drives can be mounted by multiple agents with configurable access (read-only, read-write), scoped by category (personal, team, project, workspace). |
 | **Ingress Controller / Traefik** | **Mono (Dispatcher Agent)** | The entry point for user requests. Mono receives all incoming messages and routes them to the appropriate agent, or delegates project management work to Keros -- analogous to how Traefik routes HTTP traffic to backend services. |
 | **Job / CronJob** | **Project** | A defined unit of work with completion criteria. Projects have phases (analogous to Job steps), defined teams and members, and drive allocations. |
 | **ReadinessProbe / LivenessProbe** | **SDLC Gates** | Quality checkpoints. SDLC gates require approval before a project can advance to the next phase, just as Kubernetes probes verify a Pod is ready to receive traffic. Gates support `pending`, `awaiting_approval`, `approved`, `rejected`, and `bypassed` states. |
-| **ConfigMap / Secret** | **Agent Config (SOUL.md, config.toml)** | Declarative configuration injected into the agent at startup. The daemon reads `config.toml`, `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` from its working directory, similar to how a Pod reads ConfigMaps and Secrets. |
+| **ConfigMap / Secret** | **Agent Config (SOUL.md, config.toml)** | Declarative configuration injected into the agent at runtime. The OpenClaw service reads `config.toml`, `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` from the agent's workspace directory, similar to how a Pod reads ConfigMaps and Secrets. |
 | **etcd (source of truth)** | **SQLite (planned) / MockStore** | The authoritative data store. Kubernetes uses etcd; MonokerOS uses SQLite (planned) with the API as the primary interface. YAML manifests are the import/export format, not the source of truth -- exactly mirroring `kubectl apply`. |
-| **Controller / Reconciler** | **Reconciler Service** | Watches desired state in the database and reconciles it with actual state by starting, stopping, or restarting agent daemons. Implements exponential backoff for failed agents. |
+| **Controller / Reconciler** | **Reconciler Service** | Watches desired state in the database and reconciles it with actual state by provisioning agent workspace directories and updating agent status. |
 
 ### Manifest Format
 
@@ -106,9 +106,6 @@ spec:
     skills:
       - system-architecture
       - code-review
-  daemon:
-    autonomy: supervised
-    maxToolRounds: 5
   drives:
     - name: personal
       source: members/neo
@@ -129,30 +126,21 @@ Workspace > Agent > Team > Project > Drive > TaskTemplate > Org
 
 ```mermaid
 stateDiagram-v2
-    [*] --> stopped
-    stopped --> pending: start requested
-    pending --> provisioning: config generated
-    provisioning --> starting: daemon spawned
-    starting --> running: health check passes
-    running --> stopping: stop requested / lifecycle change
-    stopping --> draining: graceful shutdown
-    draining --> stopped: drained
-
-    running --> error: crash / failure
-    error --> pending: retry (exponential backoff)
-
-    note right of error
-        Retry policy:
-        1s, 2s, 4s, 8s
-        max 5 retries
-    end note
+    [*] --> offline
+    offline --> provisioning: start requested
+    provisioning --> idle: workspace ready
+    idle --> working: receives message
+    working --> idle: response complete
+    idle --> offline: stop requested
+    working --> error: failure
+    error --> idle: retry
 ```
 
-This mirrors Kubernetes Pod lifecycle management -- including the concept of backoff retries and the separation between desired state (`active`, `standby`, `dormant`) and observed state (`running`, `error`, `stopped`).
+This mirrors Kubernetes Pod lifecycle management -- the separation between desired state (`active`, `standby`, `dormant`) and observed state (`idle`, `working`, `error`, `offline`).
 
 ---
 
-## OpenClaw / ZeroClaw Parallels
+## OpenClaw Parallels
 
 MonokerOS agents are, internally, minimal [OpenClaw](https://openclaw.ai)-style agents. OpenClaw defines a framework for building autonomous AI agents with tool use, memory, and constrained autonomy. MonokerOS adapts these concepts into a managed platform.
 
@@ -160,85 +148,82 @@ MonokerOS agents are, internally, minimal [OpenClaw](https://openclaw.ai)-style 
 
 | OpenClaw Concept | MonokerOS Implementation |
 |---|---|
-| **Autonomous agent** | Each MonokerOS agent is an independent process with its own conversation state, tools, and LLM access |
+| **Autonomous agent** | Each MonokerOS agent has its own conversation state, tools, and LLM access, managed by the OpenClaw service |
 | **System prompt as personality** | The agent's "soul" -- a markdown file (`SOUL.md`) that defines personality, values, communication style, and expertise |
 | **Tool use** | Agents can call `web_search`, `web_read`, `file_read`, `file_write`, `list_drives`, `knowledge_search`, plus role-specific tools (admin, PM, delegation) |
 | **Constrained autonomy** | Configurable `autonomy` level (`supervised` or `autonomous`) and `maxToolRounds` limit (1-20) per agent |
 | **Long-term memory** | Agent identity includes a `memory` array, plus persistent file drives for accumulated knowledge |
-| **Context injection** | Daemon reads multiple context files at startup: `SOUL.md`, `FOUNDATION.md` (workspace context), `AGENTS.md` (team/org context), `SKILLS.md` (capabilities) |
+| **Context injection** | OpenClaw reads multiple context files per agent: `SOUL.md`, `FOUNDATION.md` (workspace context), `AGENTS.md` (team/org context), `SKILLS.md` (capabilities) |
 
-### The ZeroClaw Daemon
+### The OpenClaw Service
 
-The ZeroClaw daemon is MonokerOS's lightweight agent runtime -- a standalone Bun HTTP server that runs as a child process. It is intentionally minimal:
+The OpenClaw service (`OpenClawService`) is MonokerOS's agent runtime -- an in-process NestJS service that manages all agent LLM interactions. It runs inside the API server process:
 
 ```mermaid
 graph TB
-    subgraph Daemon["ZeroClaw Daemon (per agent)"]
+    subgraph Service["OpenClaw Service (in-process)"]
         direction TB
-        CFG["Config<br/>config.toml"]
         CTX["Context Files<br/>SOUL.md, FOUNDATION.md<br/>AGENTS.md, SKILLS.md"]
         HIST["Conversation History<br/>(bounded, per-conversation)"]
         TOOLS["Tool Definitions<br/>standard + role-based"]
         LOOP["Tool-Calling Loop<br/>(max 5 rounds)"]
-        HTTP["HTTP Server<br/>/health, /webhook"]
+        SSE["SSE Streaming<br/>to LLM Provider"]
     end
 
-    CFG --> HTTP
     CTX --> HIST
     HIST --> LOOP
     TOOLS --> LOOP
-    LOOP --> HTTP
-
+    LOOP --> SSE
 ```
 
-**Why embedded daemons instead of full OpenClaw/ZeroClaw backends?**
+**Why an in-process service?**
 
-MonokerOS chose the embedded approach for three reasons:
+MonokerOS chose the in-process approach for three reasons:
 
-1. **Security** -- Each daemon is a child process of the API server, running with a unique webhook secret. There is no network exposure beyond localhost. The API server controls the daemon's entire lifecycle.
+1. **Simplicity** -- No child processes, no webhook secrets, no port allocation. The service is a NestJS module that runs alongside the rest of the API.
 
-2. **Performance** -- No network hop to an external agent runtime. The daemon is co-located with the API server and communicates via HTTP on localhost. Startup time is sub-second since Bun spawns processes efficiently.
+2. **Performance** -- No inter-process communication overhead. Direct function calls within the same Bun process. SSE streaming from LLM providers is parsed and relayed via WebSocket in real time.
 
-3. **Simplicity** -- The daemon is a single TypeScript file (~1000 lines) that reads config, maintains conversation history, calls an LLM, and executes tools. No external dependencies beyond the LLM provider API.
+3. **Reliability** -- No stale processes after API restart. No daemon lifecycle management. Agent state is managed entirely within the API server.
 
-**Future direction:** MonokerOS may support pluggable agent backends -- including full OpenClaw or ZeroClaw runtimes -- as an alternative to the embedded daemon. This would allow more sophisticated agent behaviors (multi-step planning, complex memory systems, agent-to-agent delegation) while keeping the platform's orchestration layer intact.
+**Future direction:** MonokerOS may support pluggable agent backends -- including standalone OpenClaw Docker containers -- as an alternative to the in-process service. This would allow distributed execution, agent pools, and more sophisticated agent behaviors while keeping the platform's orchestration layer intact.
 
 ### Tool Calling Architecture
 
 ```mermaid
 sequenceDiagram
-    participant D as Daemon
+    participant OC as OpenClaw Service
     participant LLM as LLM Provider
     participant API as MonokerOS API
     participant Web as External Web
 
-    D->>LLM: chat/completions (messages + tools)
+    OC->>LLM: chat/completions (messages + tools, stream: true)
 
     alt LLM returns tool_calls
-        LLM-->>D: tool_calls: [web_search, file_read]
+        LLM-->>OC: tool_calls: [web_search, file_read]
 
         par Execute tools in sequence
-            D->>Web: web_search("React 19 features")
-            Web-->>D: Search results
-            D->>API: file_read(members/neo/notes.md)
-            API-->>D: File content
+            OC->>Web: web_search("React 19 features")
+            Web-->>OC: Search results
+            OC->>API: file_read(members/neo/notes.md)
+            API-->>OC: File content
         end
 
-        D->>LLM: chat/completions (+ tool results)
+        OC->>LLM: chat/completions (+ tool results)
 
         alt More tool calls needed
-            LLM-->>D: tool_calls: [file_write]
-            D->>API: file_write(members/neo/summary.md)
-            API-->>D: Write confirmation
-            D->>LLM: chat/completions (+ tool results)
+            LLM-->>OC: tool_calls: [file_write]
+            OC->>API: file_write(members/neo/summary.md)
+            API-->>OC: Write confirmation
+            OC->>LLM: chat/completions (+ tool results)
         end
     end
 
-    LLM-->>D: Final text response
-    D-->>D: Stream as NDJSON
+    LLM-->>OC: Final text response (SSE stream)
+    OC-->>OC: Parse SSE, emit DaemonEvents
 ```
 
-The loop runs for a maximum of `maxToolRounds` iterations (default 5, configurable per agent up to 20). If the limit is reached, the daemon returns the last assistant response or a fallback message.
+The loop runs for a maximum of `maxToolRounds` iterations (default 5, configurable per agent up to 20). If the limit is reached, the service returns the last assistant response or a fallback message.
 
 ---
 
@@ -362,14 +347,14 @@ MonokerOS positions itself as an operating system -- not a heavyweight framework
 
 | OS Primitive | MonokerOS Implementation | Inspiration Source |
 |---|---|---|
-| Process management | Agent daemon lifecycle (spawn, monitor, restart, kill) | Kubernetes + OpenClaw |
+| Process management | Agent lifecycle (provision, start, stop) via OpenClaw service | Kubernetes + OpenClaw |
 | Filesystem | Hierarchical drives with ACLs and category scoping | Kubernetes PVs + traditional OS |
-| IPC | WebSocket chat with NDJSON streaming and room-scoped events | OpenClaw + traditional OS |
+| IPC | WebSocket chat with SSE-based streaming and room-scoped events | OpenClaw + traditional OS |
 | Scheduler | Mono dispatcher routes requests; reconciler manages desired state | Kubernetes scheduler |
 | User management | Workspace-scoped RBAC with JWT + API keys | Kubernetes RBAC |
 | Package management | YAML manifests with `apply` / `export` | Kubernetes + Helm |
-| Init system | Reconciler watches database, ensures daemons match desired state | Kubernetes controller manager |
-| Logging | Per-agent daemon logs with rotation | Kubernetes container logging |
+| Init system | Reconciler watches database, provisions agent workspaces | Kubernetes controller manager |
+| Logging | Per-agent activity tracking | Kubernetes container logging |
 | Audit trail | Audit log for all mutations (who, what, when) | Enterprise compliance |
 
 ### Compatibility and Extensibility

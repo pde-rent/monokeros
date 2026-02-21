@@ -78,10 +78,10 @@ Every package (except `@monokeros/config`) has a `devDependency` on `@monokeros/
 
 **Key exports:**
 - `enums.ts` -- All platform enums: `MemberStatus`, `TaskStatus`, `WorkspaceIndustry`, `AiProvider` (31 providers), `WorkspaceRole`, `ConversationType`, `DriveType`, `AgentLifecycle`, and more
-- `models.ts` -- Runtime model interfaces: `Member`, `Team`, `Project`, `Task`, `ChatMessage`, `Workspace`, `Permission`
+- `models.ts` -- Runtime model interfaces: `Member`, `Team`, `Project`, `Task`, `ChatMessage`, `Workspace`, `Permission`, `AcceptanceCriterion`, `TaskArtifact`, `GitRepoBinding`, `DoDCriterion`
 - `validation.ts` -- Zod schemas for API request/response DTOs
 - `ws.ts` -- WebSocket event name constants (`WS_EVENTS`)
-- `zeroclaw.ts` -- Daemon-related types: `ZeroClawStatus`, `AgentRuntime`
+- `zeroclaw.ts` -- Agent runtime types: `ZeroClawStatus`, `AgentRuntime`
 - `manifests/` -- Kubernetes-style manifest schemas for declarative configuration
 
 **Dependencies:** `zod`
@@ -114,7 +114,7 @@ export const WS_EVENTS = {
 - `WORKSPACE_INDUSTRIES` -- Industry configurations with default teams, phases, labels, and icons
 - `INDUSTRY_SUBTYPES` -- Valid subtypes per industry (e.g., Software Development: web, mobile, web3, ai_ml, gaming, embedded, desktop)
 - `LAUNCH_INDUSTRIES` -- Subset of industries available at launch (5 of 15)
-- Daemon constants: `DAEMON_MAX_HISTORY`, `LLM_TIMEOUT_MS`, `TOOL_REQUEST_TIMEOUT_MS`, `FILE_FETCH_TIMEOUT_MS`, `DEFAULT_ZAI_BASE_URL`, `DEFAULT_ZAI_MODEL`, `API_PORT`
+- Agent runtime constants: `DAEMON_MAX_HISTORY`, `LLM_TIMEOUT_MS`, `TOOL_REQUEST_TIMEOUT_MS`, `FILE_FETCH_TIMEOUT_MS`, `DEFAULT_ZAI_BASE_URL`, `DEFAULT_ZAI_MODEL`, `API_PORT`
 - WebSocket constants: `WS_OPEN`
 
 **Dependencies:** `@monokeros/types` (devDependency only)
@@ -313,7 +313,7 @@ apps/api/src/
   telegram/       Telegram bot integration (Grammy)
   templates/      Workspace template marketplace
   workspace/      Workspace CRUD and configuration
-  zeroclaw/       Agent daemon spawning and management
+  openclaw/       OpenClaw agent runtime service
   main.ts         Application bootstrap
 ```
 

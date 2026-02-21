@@ -25,6 +25,15 @@ export const projectManifestSchema = manifestBase('Project').extend({
     defaults: z.object({
       priority: z.nativeEnum(TaskPriority).default(TaskPriority.MEDIUM),
     }).default({}),
+    gitRepo: z.object({
+      url: z.string().min(1),
+      defaultBranch: z.string().min(1).default('main'),
+      provider: z.string().nullable().default(null),
+    }).optional(),
+    definitionOfDone: z.array(z.object({
+      description: z.string().min(1).max(1000),
+      required: z.boolean().default(true),
+    })).default([]),
   }),
 });
 

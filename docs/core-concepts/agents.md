@@ -27,10 +27,9 @@ graph TB
             MaxTok["Max Tokens: 4096"]
         end
 
-        subgraph Runtime["Runtime"]
+        subgraph RuntimeInfo["Runtime"]
             Status["Status: working"]
-            Daemon["ZeroClaw Daemon<br/>PID: 48291"]
-            Health["Last Health Check: 2s ago"]
+            Service["OpenClaw Service<br/>Status: running"]
         end
 
         subgraph Files["Drive"]
@@ -74,42 +73,35 @@ graph TB
 
 ## Agent Lifecycle
 
-Agents go through a well-defined lifecycle from creation to active operation. The lifecycle is managed by the ZeroClaw daemon system.
+Agents go through a well-defined lifecycle from creation to active operation. The lifecycle is managed by the OpenClaw service.
 
-### ZeroClaw Runtime States
+### Agent Runtime States
 
 ```mermaid
 stateDiagram-v2
-    [*] --> STOPPED : Agent created
+    [*] --> OFFLINE : Agent created
 
-    STOPPED --> PENDING : Start requested
-    PENDING --> PROVISIONING : Resources allocated
-    PROVISIONING --> STARTING : Daemon spawning
-    STARTING --> RUNNING : Health check passed
+    OFFLINE --> PROVISIONING : Start requested
+    PROVISIONING --> IDLE : Provider resolved
+    IDLE --> WORKING : Task assigned / message received
+    WORKING --> IDLE : Task completed
 
-    RUNNING --> STOPPING : Stop requested
-    RUNNING --> DRAINING : Graceful shutdown
-    RUNNING --> ERROR : Daemon crashed
+    IDLE --> ERROR : Provider unreachable
+    WORKING --> ERROR : LLM call failed
 
-    STOPPING --> STOPPED : Daemon killed
-    DRAINING --> STOPPED : Drain complete
+    ERROR --> PROVISIONING : Auto-retry
+    ERROR --> OFFLINE : Max retries exceeded
 
-    ERROR --> PENDING : Auto-retry
-    ERROR --> STOPPED : Max retries exceeded
-
-    STOPPED --> [*]
+    OFFLINE --> [*]
 ```
 
 | Status | Description |
 |--------|-------------|
-| `STOPPED` | No daemon process. Agent exists in configuration only. |
-| `PENDING` | Start has been requested. Queued for provisioning. |
-| `PROVISIONING` | Allocating resources, resolving provider credentials. |
-| `STARTING` | `Bun.spawn` has been called. Waiting for health check. |
-| `RUNNING` | Daemon is alive and accepting requests. |
-| `STOPPING` | Graceful shutdown initiated. Completing in-flight requests. |
-| `DRAINING` | Finishing active work before stopping. |
-| `ERROR` | Daemon has crashed or health check failed. May auto-retry. |
+| `OFFLINE` | Agent exists in configuration only. Not active. |
+| `PROVISIONING` | Resolving provider credentials and model configuration. |
+| `IDLE` | Running and ready to accept messages or task assignments. |
+| `WORKING` | Actively processing a message or executing tool calls. |
+| `ERROR` | Provider unreachable or LLM call failed. May auto-retry. |
 
 ### Operational Status (Member Status)
 
@@ -124,9 +116,9 @@ stateDiagram-v2
     WORKING --> BLOCKED : Dependency unmet / error
     REVIEWING --> BLOCKED : Escalation required
     BLOCKED --> IDLE : Blocker resolved
-    IDLE --> OFFLINE : Daemon stopped
-    WORKING --> OFFLINE : Daemon stopped
-    OFFLINE --> IDLE : Daemon started
+    IDLE --> OFFLINE : Agent stopped
+    WORKING --> OFFLINE : Agent stopped
+    OFFLINE --> IDLE : Agent started
 ```
 
 | Status | Description |
@@ -135,7 +127,7 @@ stateDiagram-v2
 | `working` | Actively processing a task or responding to a message. |
 | `reviewing` | Participating in cross-validation -- reviewing another agent's output. |
 | `blocked` | Cannot proceed due to an unmet dependency, error, or escalation. |
-| `offline` | Daemon is not running. Agent is configured but inactive. |
+| `offline` | Agent is configured but inactive. Not accepting messages. |
 
 ### Agent Lifecycle Levels
 
@@ -143,56 +135,47 @@ Agents also have a higher-level lifecycle classification:
 
 | Lifecycle | Description |
 |-----------|-------------|
-| `active` | Fully operational. Daemon runs or can be started on demand. |
+| `active` | Fully operational. Agent is running or can be started on demand. |
 | `standby` | Registered but not currently needed. Can be activated quickly. |
 | `dormant` | Long-term inactive. Configuration preserved but not scheduled. |
 
 ---
 
-## The Daemon System (ZeroClaw)
+## The OpenClaw Service
 
-Each running agent is backed by a **ZeroClaw daemon** -- a standalone Bun process spawned via `Bun.spawn`. The daemon is the agent's "brain": it holds the conversation history, manages the LLM API connection, and executes tool calls.
+Each running agent is backed by the **OpenClawService** -- an in-process NestJS service that manages the LLM connection, conversation history, and tool execution. Unlike the old daemon architecture, OpenClaw runs inside the API server process itself.
 
 ```mermaid
 flowchart TB
     subgraph API["API Server (NestJS)"]
-        ZCS["ZeroClawService"]
+        OCS["OpenClawService"]
         WS["WebSocket<br/>Gateways"]
+
+        subgraph AgentCtx1["Agent Context: sarah-chen"]
+            History1["Conversation<br/>History"]
+            Tools1["Tool Runtime"]
+        end
+
+        subgraph AgentCtx2["Agent Context: alex-park"]
+            History2["Conversation<br/>History"]
+            Tools2["Tool Runtime"]
+        end
     end
 
-    subgraph Daemon1["Daemon: sarah-chen (PID 48291)"]
-        HTTP1["HTTP Server<br/>Bun.serve()"]
-        LLM1["LLM Client"]
-        History1["Conversation<br/>History"]
-        Tools1["Tool Runtime"]
-    end
-
-    subgraph Daemon2["Daemon: alex-park (PID 48295)"]
-        HTTP2["HTTP Server<br/>Bun.serve()"]
-        LLM2["LLM Client"]
-        History2["Conversation<br/>History"]
-        Tools2["Tool Runtime"]
-    end
-
-    ZCS -->|"POST /chat"| HTTP1
-    ZCS -->|"POST /chat"| HTTP2
-    HTTP1 -->|"NDJSON stream"| ZCS
-    HTTP2 -->|"NDJSON stream"| ZCS
-    LLM1 -->|"OpenAI-compat API"| Provider1["AI Provider"]
-    LLM2 -->|"OpenAI-compat API"| Provider2["AI Provider"]
-
-    ZCS <-->|"Events"| WS
+    OCS --> AgentCtx1
+    OCS --> AgentCtx2
+    OCS -->|"SSE stream"| Provider1["AI Provider<br/>(Anthropic, OpenAI, etc.)"]
+    OCS <-->|"Events"| WS
 
 ```
 
-Key daemon characteristics:
+Key service characteristics:
 
-- **Isolation** -- Each agent has its own process. A crash in one daemon does not affect others.
-- **Persistence** -- Daemons outlive server restarts. They run as independent child processes.
-- **Webhook security** -- Each daemon receives a `ZEROCLAW_WEBHOOK_SECRET` environment variable. All HTTP calls from the API server must include this secret. If the API server restarts, old daemons have stale secrets and return `401`.
-- **Health checks** -- The API server periodically pings each daemon's health endpoint.
-- **Idle timeout** -- Daemons set `idleTimeout: 255` (maximum) on `Bun.serve()` to prevent premature connection termination during long LLM calls.
-- **History management** -- Each daemon maintains up to `DAEMON_MAX_HISTORY` (50) messages of conversation context.
+- **In-process** -- No child processes. OpenClaw runs within the NestJS API server, eliminating process management overhead.
+- **SSE streaming** -- LLM responses are consumed as Server-Sent Events and yielded as an `AsyncGenerator<DaemonEvent>`.
+- **No webhooks or secrets** -- Since the service is in-process, there is no HTTP communication or webhook secret management between the API and agent runtime.
+- **Provider resolution chain** -- Each agent's provider, API key, base URL, and model are resolved through a cascading chain (agent override -> workspace config -> environment variables).
+- **Bounded conversation history** -- Each agent maintains a bounded window of conversation context to stay within token limits.
 
 ---
 
@@ -205,42 +188,39 @@ sequenceDiagram
     participant Client as Browser
     participant WS as WebSocket Gateway
     participant API as ChatService
-    participant ZC as ZeroClawService
-    participant Daemon as Agent Daemon
+    participant OC as OpenClawService
     participant LLM as AI Provider
 
     Client->>WS: chat:message (conversationId, content)
     WS->>API: handleMessage()
     API->>API: Save user message to store
-    API->>ZC: sendMessage(memberId, content)
-    ZC->>Daemon: POST /chat (HTTP)
+    API->>OC: sendMessage(memberId, content)
 
-    Note over Daemon: Build prompt with<br/>SOUL.md + history + tools
+    Note over OC: Build prompt with<br/>SOUL.md + history + tools
 
-    Daemon->>LLM: POST /chat/completions (streaming)
+    OC->>LLM: POST /chat/completions (streaming)
 
-    loop NDJSON Stream
-        LLM-->>Daemon: SSE chunk
-        Daemon-->>ZC: {"type":"content","data":{"text":"..."}}
-        ZC-->>WS: chat:stream-chunk
+    loop SSE Parsing
+        LLM-->>OC: SSE chunk
+        OC-->>WS: chat:stream-chunk (DaemonEvent)
         WS-->>Client: Render chunk in real-time
     end
 
     opt Tool Calls
-        Daemon->>Daemon: Execute tool
-        Note over Daemon,ZC: tool_start / tool_end events
-        Daemon->>LLM: Tool result + continue
+        OC->>OC: Execute tool
+        Note over OC: tool_start / tool_end events
+        OC->>LLM: Tool result + continue
     end
 
-    Daemon-->>ZC: {"type":"done","data":{"response":"..."}}
-    ZC->>API: Save agent message to store
-    ZC-->>WS: chat:stream-end
+    OC-->>OC: yield {"type":"done","data":{"response":"..."}}
+    OC->>API: Save agent message to store
+    OC-->>WS: chat:stream-end
     WS-->>Client: Finalize message
 ```
 
 ### Streaming Events
 
-The daemon communicates via **NDJSON** (newline-delimited JSON) streaming. Each line is a `DaemonEvent`:
+OpenClaw yields events as **DaemonEvent** objects from an `AsyncGenerator`. Each event is a `DaemonEvent`:
 
 | Event Type | Description |
 |------------|-------------|
@@ -274,8 +254,8 @@ Each agent has a personal [drive](./drives.md) containing system files that defi
 | `IDENTITY.md` | Structured identity document: name, title, specialization, team affiliation, background narrative. |
 | `SKILLS.md` | Enumerated list of capabilities and tools the agent can use. Defines what the agent is allowed to do. |
 | `FOUNDATION.md` | Foundational knowledge and context about the workspace, projects, and organizational norms. |
-| `AGENTS.md` | Team roster listing all agents in the workspace, their roles, teams, and specializations. Read by the daemon for inter-agent awareness. |
-| `config.toml` | Machine-readable configuration: model settings, daemon parameters, drive access flags. |
+| `AGENTS.md` | Team roster listing all agents in the workspace, their roles, teams, and specializations. Read by OpenClaw for inter-agent awareness. |
+| `config.toml` | Machine-readable configuration: model settings, runtime parameters, drive access flags. |
 | `MONOKEROS.md` | Platform-level instructions injected by MonokerOS into the agent context. |
 | `avatar.svg` / `avatar.png` | The agent's visual avatar. |
 | `KNOWLEDGE/` | A protected directory containing domain knowledge documents the agent can reference. |
@@ -299,7 +279,7 @@ flowchart LR
 
 ```
 
-The daemon assembles a complete prompt by combining all system files with conversation history and the user's message. This composite context shapes the agent's personality, knowledge, and behavioral boundaries for every interaction.
+OpenClaw assembles a complete prompt by combining all system files with conversation history and the user's message. This composite context shapes the agent's personality, knowledge, and behavioral boundaries for every interaction.
 
 ---
 
@@ -421,9 +401,6 @@ spec:
     name: claude-sonnet-4-5-20250929
     temperature: 0.7
     maxTokens: 4096
-  daemon:
-    maxHistory: 50
-    maxToolRounds: 5
   drives:
     personal: true
     team: true
@@ -437,14 +414,12 @@ The `identity` field supports either inline `soul` text or a `soulRef` pointing 
 
 ### Agent Runtime Info
 
-The `AgentRuntime` structure provides real-time observability into each agent's daemon:
+The `AgentRuntime` structure provides real-time observability into each agent:
 
 | Field | Description |
 |-------|-------------|
 | `memberId` | Which agent this runtime belongs to |
-| `pid` | OS process ID of the daemon |
-| `status` | ZeroClaw status (stopped, running, error, etc.) |
-| `lastHealthCheck` | Timestamp of the last successful health ping |
+| `status` | Agent status (offline, idle, working, error, etc.) |
 | `error` | Error message if in error state |
 | `retryCount` | Number of restart attempts |
 | `nextRetryAt` | When the next auto-retry is scheduled |

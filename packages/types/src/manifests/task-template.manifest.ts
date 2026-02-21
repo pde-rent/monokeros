@@ -14,6 +14,7 @@ export const taskTemplateManifestSchema = manifestBase('TaskTemplate').extend({
       enabled: z.boolean().default(false),
       minReviewers: z.number().int().min(1).max(5).default(2),
     }).default({}),
+    acceptanceCriteria: z.array(z.string().min(1).max(1000)).default([]),
   }),
 });
 
