@@ -6,7 +6,7 @@ import { RenderService } from '../render/render.service';
 import { MemberStatus, MessageRole, NotificationType, ConversationType, MemberType, createConversationSchema, renameConversationSchema, sendMessageSchema } from '@monokeros/types';
 import type { Conversation, CreateConversationResponse, ChatMessage, MessageAttachment, CreateConversationInput, RenameConversationInput, SendMessageInput } from '@monokeros/types';
 import { generateId, now } from '@monokeros/utils';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 import { findOrThrow } from '../common/find-or-throw';
@@ -21,7 +21,7 @@ export class ChatController extends BaseCrudController<Conversation> {
   constructor(
     store: MockStore,
     private gateway: ChatGateway,
-    private zeroclaw: ZeroClawService,
+    private openclaw: OpenClawService,
     private attachments: AttachmentsService,
     private renderService: RenderService,
     private notificationsService: NotificationsService,
@@ -262,7 +262,7 @@ export class ChatController extends BaseCrudController<Conversation> {
 
       let finalResponse = '';
 
-      for await (const event of this.zeroclaw.streamMessage(memberId, content, conversationId, adminContext)) {
+      for await (const event of this.openclaw.streamMessage(memberId, content, conversationId, adminContext)) {
         switch (event.type) {
           case 'status':
             this.gateway.emitThinkingStatus(conversationId, event.data.phase);

@@ -3,7 +3,7 @@ import { MockStore } from '../store/mock-store';
 import { MembersGateway } from './members.gateway';
 import { MemberStatus, ZeroClawStatus, NotificationType, MemberType, updateMemberStatusSchema, createMemberSchema, updateMemberSchema } from '@monokeros/types';
 import type { Member, UpdateMemberStatusInput, CreateMemberInput, UpdateMemberInput, MemberGender } from '@monokeros/types';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 import { ApiKeyService } from '../auth/api-key.service';
 import { BaseCrudController } from '../common/base-crud.controller';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -20,7 +20,7 @@ export class MembersController extends BaseCrudController<Member> {
   constructor(
     store: MockStore,
     private gateway: MembersGateway,
-    private zeroclaw: ZeroClawService,
+    private openclaw: OpenClawService,
     private apiKeyService: ApiKeyService,
     private filesService: FilesService,
     private notificationsService: NotificationsService,
@@ -165,10 +165,10 @@ export class MembersController extends BaseCrudController<Member> {
 
     // Restart daemon if model config changed and agent is running
     if (modelChanged && member.type === 'agent') {
-      const rt = this.zeroclaw.getRuntime(id);
+      const rt = this.openclaw.getRuntime(id);
       if (rt?.status === ZeroClawStatus.RUNNING) {
-        await this.zeroclaw.stop(id);
-        await this.zeroclaw.start(id);
+        await this.openclaw.stop(id);
+        await this.openclaw.start(id);
       }
     }
 
@@ -233,7 +233,7 @@ export class MembersController extends BaseCrudController<Member> {
     if (member.type !== 'agent') {
       throw new BadRequestException('Only agent members can be started');
     }
-    return this.zeroclaw.start(id);
+    return this.openclaw.start(id);
   }
 
   @Post(':id/stop')
@@ -243,7 +243,7 @@ export class MembersController extends BaseCrudController<Member> {
     if (member.type !== 'agent') {
       throw new BadRequestException('Only agent members can be stopped');
     }
-    await this.zeroclaw.stop(id);
+    await this.openclaw.stop(id);
     return { success: true };
   }
 
@@ -259,7 +259,7 @@ export class MembersController extends BaseCrudController<Member> {
     }
     // Stop agent if running
     if (member.type === 'agent') {
-      await this.zeroclaw.stop(id);
+      await this.openclaw.stop(id);
     }
     this.store.members.delete(id);
 
@@ -285,6 +285,6 @@ export class MembersController extends BaseCrudController<Member> {
   @Get(':id/runtime')
   @Permissions(PERMISSIONS.members.read)
   getRuntime(@Param('id') id: string) {
-    return this.zeroclaw.getRuntime(id) ?? { memberId: id, status: ZeroClawStatus.STOPPED };
+    return this.openclaw.getRuntime(id) ?? { memberId: id, status: ZeroClawStatus.STOPPED };
   }
 }

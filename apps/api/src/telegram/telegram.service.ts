@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Bot } from 'grammy';
 import { MockStore } from '../store/mock-store';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { RenderService } from '../render/render.service';
 import type { Workspace, Conversation, ChatMessage } from '@monokeros/types';
@@ -16,7 +16,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private store: MockStore,
-    private zeroclaw: ZeroClawService,
+    private openclaw: OpenClawService,
     private chatGateway: ChatGateway,
     private renderService: RenderService,
   ) {}
@@ -85,12 +85,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         // Send "Thinking..." placeholder
         const placeholder = await ctx.reply('Thinking...');
 
-        // Stream response from ZeroClaw
+        // Stream response from OpenClaw
         this.chatGateway.emitStreamStart(conversation.id, monoId);
 
         let finalResponse = '';
 
-        for await (const event of this.zeroclaw.streamMessage(monoId, text, conversation.id)) {
+        for await (const event of this.openclaw.streamMessage(monoId, text, conversation.id)) {
           switch (event.type) {
             case 'status':
               this.chatGateway.emitThinkingStatus(conversation.id, event.data.phase);

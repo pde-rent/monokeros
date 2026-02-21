@@ -8,7 +8,7 @@ import { DEFAULT_ENTITY_COLOR, PERMISSIONS, INDUSTRY_TASK_TYPES } from '@monoker
 import { Permissions } from '../auth/permissions.decorator';
 import { SystemAgentsService } from './system-agents.service';
 import { TelegramService } from '../telegram/telegram.service';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 
 /** Top-level workspace management (no workspace scope) */
 @Controller('workspaces')
@@ -17,7 +17,7 @@ export class WorkspacesController {
     private store: MockStore,
     private systemAgents: SystemAgentsService,
     private telegramService: TelegramService,
-    private zeroClawService: ZeroClawService,
+    private openClawService: OpenClawService,
   ) {}
 
   @Get()
@@ -104,7 +104,7 @@ export class WorkspacesController {
 
     // Stop all agent runtimes for this workspace
     const wsMembers = [...this.store.members.values()].filter((m) => m.workspaceId === ws.id && m.type === 'agent');
-    await Promise.all(wsMembers.map((m) => this.zeroClawService.stop(m.id).catch(() => {})));
+    await Promise.all(wsMembers.map((m) => this.openClawService.stop(m.id).catch(() => {})));
 
     // Stop Telegram bot
     await this.telegramService.stopBot(ws.id);

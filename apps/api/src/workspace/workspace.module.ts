@@ -4,10 +4,10 @@ import { SystemAgentsService } from './system-agents.service';
 import { FilesModule } from '../files/files.module';
 import { AuthModule } from '../auth/auth.module';
 import { TelegramModule } from '../telegram/telegram.module';
-import { ZeroClawModule } from '../zeroclaw/zeroclaw.module';
+import { OpenClawModule } from '../openclaw/openclaw.module';
 
 @Module({
-  imports: [FilesModule, AuthModule, TelegramModule, ZeroClawModule],
+  imports: [FilesModule, AuthModule, TelegramModule, OpenClawModule],
   controllers: [WorkspacesController, WorkspaceConfigController],
   providers: [SystemAgentsService],
   exports: [SystemAgentsService],

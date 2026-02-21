@@ -6,14 +6,14 @@ import { withResult } from './utils';
 export function registerAgentTools(server: McpServer, api: ApiClient) {
   server.tool(
     'agents.get_runtime',
-    'Get ZeroClaw agent daemon runtime status (port, PID, status, last health check).',
+    'Get OpenClaw agent runtime status (port, PID, status, last health check).',
     { id: z.string().describe('Agent member ID') },
     async ({ id }) => withResult(() => api.getMemberRuntime(id)),
   );
 
   server.tool(
     'agents.list_runtimes',
-    'List runtime status for all ZeroClaw agent daemons.',
+    'List runtime status for all OpenClaw agent daemons.',
     {},
     async () => withResult(() => api.listAgentRuntimes()),
   );

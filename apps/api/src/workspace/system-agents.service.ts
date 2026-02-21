@@ -7,7 +7,7 @@ import { generateAvatar } from '@monokeros/avatar';
 import { MockStore } from '../store/mock-store';
 import { FilesService } from '../files/files.service';
 import { ApiKeyService } from '../auth/api-key.service';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 
 @Injectable()
 export class SystemAgentsService {
@@ -17,7 +17,7 @@ export class SystemAgentsService {
     private store: MockStore,
     private filesService: FilesService,
     private apiKeyService: ApiKeyService,
-    private zeroclaw: ZeroClawService,
+    private openclaw: OpenClawService,
   ) {}
 
   /**
@@ -163,8 +163,8 @@ export class SystemAgentsService {
 
     // Start system agent daemons in background (don't block workspace creation)
     Promise.all([
-      this.zeroclaw.start(monoId),
-      this.zeroclaw.start(kerosId),
+      this.openclaw.start(monoId),
+      this.openclaw.start(kerosId),
     ]).then((results) => {
       for (const rt of results) {
         this.log.log(`System agent ${rt.memberId} -> ${rt.status}`);

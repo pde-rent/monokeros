@@ -139,7 +139,7 @@ Every drive scope has a \`KNOWLEDGE/\` directory for curated reference material.
 
 ## Agent Architecture
 
-Agents run as ZeroClaw daemons with:
+Agents run as OpenClaw daemons with:
 - System prompt built from SOUL.md + FOUNDATION.md + AGENTS.md + SKILLS.md
 - Tool calling (web search, web read, file read/write, list drives, knowledge search)
 - Conversation history with bounded context window

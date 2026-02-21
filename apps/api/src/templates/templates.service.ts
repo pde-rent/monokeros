@@ -10,7 +10,7 @@ import { FilesService } from '../files/files.service';
 import { ApiKeyService } from '../auth/api-key.service';
 import { IdentityService } from '../identity/identity.service';
 import { SystemAgentsService } from '../workspace/system-agents.service';
-import { ZeroClawService } from '../zeroclaw/zeroclaw.service';
+import { OpenClawService } from '../openclaw/openclaw.service';
 
 @Injectable()
 export class TemplatesService {
@@ -22,7 +22,7 @@ export class TemplatesService {
     private apiKeyService: ApiKeyService,
     private identityService: IdentityService,
     private systemAgents: SystemAgentsService,
-    private zeroclaw: ZeroClawService,
+    private openclaw: OpenClawService,
   ) {}
 
   listTemplates(category?: string): TemplateListing[] {
@@ -203,7 +203,7 @@ export class TemplatesService {
 
     // 7. Start template agent daemons in background (system agents already started by bootstrap)
     const agentIds = [...nameToId.values()];
-    Promise.allSettled(agentIds.map((id) => this.zeroclaw.start(id)))
+    Promise.allSettled(agentIds.map((id) => this.openclaw.start(id)))
       .then((results) => {
         const running = results.filter((r) => r.status === 'fulfilled' && r.value.status === ZeroClawStatus.RUNNING).length;
         this.log.log(`Template agents started: ${running}/${agentIds.length} running`);

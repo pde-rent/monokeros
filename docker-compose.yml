@@ -1,0 +1,85 @@
+# MonokerOS Docker Compose Stack
+# Runs: NestJS API, Next.js Web, OpenClaw Gateway
+#
+# Usage:
+#   cp apps/api/.env.example .env   # then fill in your keys
+#   docker compose up -d
+
+services:
+  # ── NestJS API (port 3001) ──────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_GATEWAY_URL=http://openclaw:18789
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - ZAI_API_KEY=${ZAI_API_KEY}
+      - ZAI_BASE_URL=${ZAI_BASE_URL}
+      - ZAI_MODEL=${ZAI_MODEL}
+    volumes:
+      - agent-data:/data
+    depends_on:
+      openclaw:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Next.js Web (port 3000) ─────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ── OpenClaw Gateway (port 18789) ───────────────────────────────────
+  openclaw:
+    build:
+      context: .
+      dockerfile: docker/openclaw/Dockerfile
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      # AI provider credentials (passed through to agents)
+      ZAI_API_KEY: ${ZAI_API_KEY}
+      ZAI_BASE_URL: ${ZAI_BASE_URL}
+      ZAI_MODEL: ${ZAI_MODEL}
+      # MonokerOS API for MCP tools
+      MONOKEROS_API_URL: http://api:3001
+      MK_API_KEY: ${MK_API_KEY:-mk_dev_system}
+      MK_WORKSPACE: ${MK_WORKSPACE:-default}
+    volumes:
+      # OpenClaw config and state
+      - openclaw-config:/home/node/.openclaw
+      # Shared agent workspace data
+      - agent-data:/data
+      # Shared Chromium cache (saves ~250MB per container)
+      - chromium-cache:/home/node/.cache/chromium
+    ports:
+      - "${OPENCLAW_PORT:-18789}:18789"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:18789/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  # Agent workspace files (SOUL.md, AGENTS.md, etc.)
+  agent-data:
+    driver: local
+  # OpenClaw gateway config and session state
+  openclaw-config:
+    driver: local
+  # Shared Chromium installation (~250MB saved per agent)
+  chromium-cache:
+    driver: local

@@ -111,14 +111,14 @@ export function registerMemberTools(server: McpServer, api: ApiClient) {
 
   server.tool(
     'members.start_agent',
-    'Start a ZeroClaw agent daemon. The agent must be of type "agent". Returns runtime info including port and PID.',
+    'Start an OpenClaw agent daemon. The agent must be of type "agent". Returns runtime info including port and PID.',
     { id: z.string().describe('Agent member ID') },
     async ({ id }) => withResult(() => api.startAgent(id)),
   );
 
   server.tool(
     'members.stop_agent',
-    'Stop a running ZeroClaw agent daemon. Sends SIGTERM then SIGKILL after grace period.',
+    'Stop a running OpenClaw agent daemon. Sends SIGTERM then SIGKILL after grace period.',
     { id: z.string().describe('Agent member ID') },
     async ({ id }) => {
       try {

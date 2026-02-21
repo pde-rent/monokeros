@@ -1,6 +1,6 @@
 import { join, resolve } from 'node:path';
 
-/** Resolves the ZeroClaw agent data directory from env or default. */
+/** Resolves the OpenClaw agent data directory from env or default. */
 export const getDataDir = () =>
   resolve(process.env.ZEROCLAW_DATA_DIR || join(process.cwd(), 'data', 'agents'));
 
