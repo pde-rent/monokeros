@@ -1,5 +1,6 @@
-import { generateAvatar } from './src/index';
-import { TEAM_PRESETS } from '../constants/src/index';
+/* eslint-disable no-console */
+import { generateAvatar } from "./src/index";
+import { TEAM_PRESETS } from "../constants/src/index";
 
 const COUNT = 1000;
 
@@ -8,7 +9,11 @@ interface VerificationResult {
   deterministic: { passed: boolean; tested: number; failures: string[] };
   backgroundColor: { passed: boolean; tested: number; matched: number; failures: string[] };
   sprites: { passed: boolean; minLayers: number; maxLayers: number; avgLayers: number };
-  distribution: { gender: Record<string, number>; skinTones: Set<string>; bgColors: Map<string, number> };
+  distribution: {
+    gender: Record<string, number>;
+    skinTones: Set<string>;
+    bgColors: Map<string, number>;
+  };
 }
 
 const result: VerificationResult = {
@@ -20,8 +25,8 @@ const result: VerificationResult = {
 
 // Helper to decode base64 SVG
 function decodeSvg(dataUrl: string): string {
-  const base64 = dataUrl.replace(/^data:image\/svg\+xml;base64,/, '');
-  return Buffer.from(base64, 'base64').toString('utf-8');
+  const base64 = dataUrl.replace(/^data:image\/svg\+xml;base64,/, "");
+  return Buffer.from(base64, "base64").toString("utf-8");
 }
 
 // Extract background colors from SVG
@@ -39,27 +44,27 @@ function countImageLayers(svg: string): number {
 }
 
 // Determine gender from SVG content
-function _detectGender(svg: string): 'male' | 'female' {
+function _detectGender(svg: string): "male" | "female" {
   // Gender is determined by which hair layers are present
   // hair_male and beard only appear for gender=1
   // hair_female only appears for gender=2
-  if (svg.includes('t-hair')) {
+  if (svg.includes("t-hair")) {
     // Both have hair, but we can infer from layer count/presence
     // For simplicity, we'll use a heuristic based on the seed-based distribution
-    return Math.random() < 0.5 ? 'male' : 'female';
+    return Math.random() < 0.5 ? "male" : "female";
   }
-  return 'male';
+  return "male";
 }
 
-console.log('=== Avatar Verification Suite ===\n');
+console.log("=== Avatar Verification Suite ===\n");
 console.log(`Generating ${COUNT} avatars...\n`);
 
 // Get team colors
-const teamColors = TEAM_PRESETS.map(t => t.color.toLowerCase());
+const teamColors = TEAM_PRESETS.map((t) => t.color.toLowerCase());
 console.log(`Team colors available: ${teamColors.length}`);
 
 // Test determinism first
-console.log('1. Testing determinism (same seed = same avatar)...');
+console.log("1. Testing determinism (same seed = same avatar)...");
 for (let i = 0; i < 100; i++) {
   const seed = `determinism-${i}`;
   const a1 = generateAvatar({ seed });
@@ -70,10 +75,12 @@ for (let i = 0; i < 100; i++) {
     result.deterministic.failures.push(seed);
   }
 }
-console.log(`   ${result.deterministic.passed ? '✅ PASSED' : '❌ FAILED'} (${result.deterministic.tested} tests)\n`);
+console.log(
+  `   ${result.deterministic.passed ? "✅ PASSED" : "❌ FAILED"} (${result.deterministic.tested} tests)\n`,
+);
 
 // Generate avatars and collect statistics
-console.log('2. Generating avatars and collecting statistics...');
+console.log("2. Generating avatars and collecting statistics...");
 const avatarCells: string[] = [];
 let totalLayers = 0;
 
@@ -96,19 +103,20 @@ for (let i = 0; i < COUNT; i++) {
   totalLayers += layerCount;
 
   // Track background colors
-  const bgKey = bgColors[0] || 'unknown';
+  const bgKey = bgColors[0] || "unknown";
   result.distribution.bgColors.set(bgKey, (result.distribution.bgColors.get(bgKey) || 0) + 1);
 
   // Check if team color was applied
   if (useTeamColor) {
     result.backgroundColor.tested++;
     // Check if the background contains the team color (exact or shifted)
-    const teamColorClean = teamColor.replace('#', '');
-    const hasMatch = bgColors.some(c =>
-      c.includes(teamColorClean) ||
-      c === teamColor ||
-      // Check for shifted versions (the generator shifts colors)
-      Math.abs(parseInt(c.slice(1), 16) - parseInt(teamColorClean, 16)) < 0x222222
+    const teamColorClean = teamColor.replace("#", "");
+    const hasMatch = bgColors.some(
+      (c) =>
+        c.includes(teamColorClean) ||
+        c === teamColor ||
+        // Check for shifted versions (the generator shifts colors)
+        Math.abs(parseInt(c.slice(1), 16) - parseInt(teamColorClean, 16)) < 0x222222,
     );
     if (hasMatch) {
       result.backgroundColor.matched++;
@@ -124,36 +132,36 @@ for (let i = 0; i < COUNT; i++) {
 
   avatarCells.push(
     `<div style="display:inline-flex;flex-direction:column;align-items:center;margin:1px;width:72px">` +
-    `<img src="${dataUrl}" width="56" height="56" style="image-rendering:pixelated;border-radius:4px;border:1px solid #333"/>` +
-    `<div style="font-size:8px;color:#666;margin-top:2px">${i} (${layerCount}L)</div>` +
-    badge +
-    `</div>`
+      `<img src="${dataUrl}" width="56" height="56" style="image-rendering:pixelated;border-radius:4px;border:1px solid #333"/>` +
+      `<div style="font-size:8px;color:#666;margin-top:2px">${i} (${layerCount}L)</div>` +
+      badge +
+      `</div>`,
   );
 }
 
-result.sprites.avgLayers = Math.round(totalLayers / COUNT * 10) / 10;
+result.sprites.avgLayers = Math.round((totalLayers / COUNT) * 10) / 10;
 result.sprites.passed = result.sprites.minLayers >= 4; // At least body, head, eyes, shirt
 
 console.log(`   Generated ${COUNT} avatars\n`);
 
 // Results
-console.log('=== Verification Results ===\n');
+console.log("=== Verification Results ===\n");
 
-console.log(`3. Determinism: ${result.deterministic.passed ? '✅ PASSED' : '❌ FAILED'}`);
+console.log(`3. Determinism: ${result.deterministic.passed ? "✅ PASSED" : "❌ FAILED"}`);
 console.log(`   Tested: ${result.deterministic.tested} seeds\n`);
 
 console.log(`4. Sprite Layer Rendering:`);
 console.log(`   Min layers: ${result.sprites.minLayers}`);
 console.log(`   Max layers: ${result.sprites.maxLayers}`);
 console.log(`   Avg layers: ${result.sprites.avgLayers}`);
-console.log(`   Status: ${result.sprites.passed ? '✅ PASSED (>=4 layers)' : '❌ FAILED'}\n`);
+console.log(`   Status: ${result.sprites.passed ? "✅ PASSED (>=4 layers)" : "❌ FAILED"}\n`);
 
 console.log(`5. Background Color Distribution:`);
 console.log(`   Unique background colors: ${result.distribution.bgColors.size}`);
 const sortedBgs = [...result.distribution.bgColors.entries()].sort((a, b) => b[1] - a[1]);
 console.log(`   Top 10 most common:`);
 for (const [color, count] of sortedBgs.slice(0, 10)) {
-  console.log(`     ${color}: ${count} avatars (${Math.round(count / COUNT * 100)}%)`);
+  console.log(`     ${color}: ${count} avatars (${Math.round((count / COUNT) * 100)}%)`);
 }
 
 // Check team color usage
@@ -201,11 +209,11 @@ const html = `<!DOCTYPE html>
     <div class="stats">
       <div class="stat">
         <div class="stat-label">Determinism</div>
-        <div class="stat-value ${result.deterministic.passed ? 'pass' : 'fail'}">${result.deterministic.passed ? '✅ PASS' : '❌ FAIL'}</div>
+        <div class="stat-value ${result.deterministic.passed ? "pass" : "fail"}">${result.deterministic.passed ? "✅ PASS" : "❌ FAIL"}</div>
       </div>
       <div class="stat">
         <div class="stat-label">Sprite Layers</div>
-        <div class="stat-value ${result.sprites.passed ? 'pass' : 'fail'}">${result.sprites.minLayers}-${result.sprites.maxLayers} (avg ${result.sprites.avgLayers})</div>
+        <div class="stat-value ${result.sprites.passed ? "pass" : "fail"}">${result.sprites.minLayers}-${result.sprites.maxLayers} (avg ${result.sprites.avgLayers})</div>
       </div>
       <div class="stat">
         <div class="stat-label">Unique BG Colors</div>
@@ -222,7 +230,7 @@ const html = `<!DOCTYPE html>
     <h2>Team Signature Colors</h2>
     <p style="color:#888;font-size:12px;margin:0 0 8px 0">When backgroundColor is provided, avatars should use the team's signature color</p>
     <div class="legend">
-      ${TEAM_PRESETS.map(t => `<div class="legend-item"><div class="legend-color" style="background:${t.color}"></div>${t.displayName}</div>`).join('')}
+      ${TEAM_PRESETS.map((t) => `<div class="legend-item"><div class="legend-color" style="background:${t.color}"></div>${t.displayName}</div>`).join("")}
     </div>
   </div>
 
@@ -230,9 +238,13 @@ const html = `<!DOCTYPE html>
     <h2>Background Color Distribution</h2>
     <p style="color:#888;font-size:12px;margin:0 0 8px 0">Top 15 most common background colors across ${COUNT} avatars</p>
     <div class="color-dist">
-      ${sortedBgs.slice(0, 15).map(([color, count]) =>
-        `<div class="color-item"><div class="color-swatch" style="background:${color}"></div>${color} (${count})</div>`
-      ).join('')}
+      ${sortedBgs
+        .slice(0, 15)
+        .map(
+          ([color, count]) =>
+            `<div class="color-item"><div class="color-swatch" style="background:${color}"></div>${color} (${count})</div>`,
+        )
+        .join("")}
     </div>
   </div>
 
@@ -242,13 +254,13 @@ const html = `<!DOCTYPE html>
       Format: index (layer count) | Badge shows team color or "rand" for random
     </p>
     <div class="grid">
-      ${avatarCells.join('')}
+      ${avatarCells.join("")}
     </div>
   </div>
 </body>
 </html>`;
 
-await Bun.write('avatars-1000-verify.html', html);
+await Bun.write("avatars-1000-verify.html", html);
 
-console.log('\n✅ Wrote avatars-1000-verify.html');
-console.log('\nOpen the file in a browser to visually verify avatar rendering.');
+console.log("\n✅ Wrote avatars-1000-verify.html");
+console.log("\nOpen the file in a browser to visually verify avatar rendering.");

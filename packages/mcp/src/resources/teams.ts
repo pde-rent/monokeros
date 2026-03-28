@@ -1,11 +1,11 @@
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { ApiClient } from '../api-client';
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ApiClient } from "../api-client";
 
 export function registerTeamResources(server: McpServer, api: ApiClient) {
   server.resource(
-    'teams-list',
-    'monokeros://teams',
-    { description: 'All teams as JSON', mimeType: 'application/json' },
+    "teams-list",
+    "monokeros://teams",
+    { description: "All teams as JSON", mimeType: "application/json" },
     async (uri) => {
       const teams = await api.listTeams();
       return {
@@ -15,8 +15,8 @@ export function registerTeamResources(server: McpServer, api: ApiClient) {
   );
 
   server.resource(
-    'team-detail',
-    new ResourceTemplate('monokeros://teams/{teamId}', {
+    "team-detail",
+    new ResourceTemplate("monokeros://teams/{teamId}", {
       list: async () => {
         const teams = await api.listTeams();
         return {
@@ -27,7 +27,7 @@ export function registerTeamResources(server: McpServer, api: ApiClient) {
         };
       },
     }),
-    { description: 'Team with members as JSON', mimeType: 'application/json' },
+    { description: "Team with members as JSON", mimeType: "application/json" },
     async (uri, { teamId }) => {
       const team = await api.getTeam(teamId as string);
       return {

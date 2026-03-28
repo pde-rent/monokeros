@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { CaretDownIcon } from '@phosphor-icons/react';
-import { useClickOutside } from './use-click-outside';
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { CaretDownIcon } from "@phosphor-icons/react";
+import { useClickOutside } from "./use-click-outside";
 
 export interface DropdownOption {
   value: string;
   label: string;
 }
 
-type DropdownSize = 'compact' | 'default';
+type DropdownSize = "compact" | "default";
 
 interface DropdownSelectProps {
   value: string;
@@ -26,13 +26,13 @@ interface DropdownSelectProps {
 }
 
 const TRIGGER_STYLES: Record<DropdownSize, string> = {
-  compact: 'px-2 py-0.5 text-sm',
-  default: 'px-3 py-1.5 text-sm',
+  compact: "px-2 py-0.5 text-sm",
+  default: "px-3 py-1.5 text-sm",
 };
 
 const LABEL_STYLES: Record<DropdownSize, string> = {
-  compact: 'mb-1 block text-[10px] font-medium uppercase tracking-wider text-fg-3',
-  default: 'text-[10px] font-medium uppercase tracking-wider text-fg-3',
+  compact: "mb-1 block text-[10px] font-medium uppercase tracking-wider text-fg-3",
+  default: "text-[10px] font-medium uppercase tracking-wider text-fg-3",
 };
 
 export function DropdownSelect({
@@ -42,9 +42,9 @@ export function DropdownSelect({
   placeholder,
   label,
   error,
-  size = 'default',
+  size = "default",
   disabled = false,
-  className = '',
+  className = "",
 }: DropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,8 +65,8 @@ export function DropdownSelect({
     if (disabled) return;
 
     switch (e.key) {
-      case 'Enter':
-      case ' ':
+      case "Enter":
+      case " ":
         e.preventDefault();
         if (!open) {
           setOpen(true);
@@ -76,11 +76,11 @@ export function DropdownSelect({
           close();
         }
         break;
-      case 'Escape':
+      case "Escape":
         e.preventDefault();
         close();
         break;
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
         if (!open) {
           setOpen(true);
@@ -89,7 +89,7 @@ export function DropdownSelect({
           setFocusIndex((prev) => Math.min(prev + 1, options.length - 1));
         }
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
         if (open) {
           setFocusIndex((prev) => Math.max(prev - 1, 0));
@@ -102,41 +102,41 @@ export function DropdownSelect({
   useEffect(() => {
     if (focusIndex >= 0 && listRef.current) {
       const item = listRef.current.children[focusIndex] as HTMLElement | undefined;
-      item?.scrollIntoView({ block: 'nearest' });
+      item?.scrollIntoView({ block: "nearest" });
     }
   }, [focusIndex]);
 
   return (
     <div className={`w-full ${className}`}>
-      {label && (
-        <label className={LABEL_STYLES[size]}>{label}</label>
-      )}
-      <div ref={containerRef} className={`relative ${size === 'default' && label ? 'mt-1' : ''}`}>
+      {label && <label className={LABEL_STYLES[size]}>{label}</label>}
+      <div ref={containerRef} className={`relative ${size === "default" && label ? "mt-1" : ""}`}>
         <button
           type="button"
-          onClick={() => { if (!disabled) setOpen((o) => !o); }}
+          onClick={() => {
+            if (!disabled) setOpen((o) => !o);
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           className={`
             flex w-full items-center justify-between gap-1
-            ${size === 'compact' ? 'rounded-sm' : 'rounded-md'}
+            ${size === "compact" ? "rounded-sm" : "rounded-md"}
             border border-edge
-            ${size === 'compact' ? 'bg-surface' : 'bg-surface-2'}
+            ${size === "compact" ? "bg-surface" : "bg-surface-2"}
             text-left
             outline-none
             transition-colors
             disabled:opacity-50
-            ${open ? 'border-blue' : ''}
-            ${error ? 'border-red' : ''}
+            ${open ? "border-blue" : ""}
+            ${error ? "border-red" : ""}
             ${TRIGGER_STYLES[size]}
           `}
         >
-          <span className={selectedLabel ? 'text-fg' : 'text-fg-3'}>
-            {selectedLabel ?? placeholder ?? 'Select...'}
+          <span className={selectedLabel ? "text-fg" : "text-fg-3"}>
+            {selectedLabel ?? placeholder ?? "Select..."}
           </span>
           <CaretDownIcon
-            size={size === 'compact' ? 10 : 12}
-            className={`shrink-0 text-fg-3 transition-transform ${open ? 'rotate-180' : ''}`}
+            size={size === "compact" ? 10 : 12}
+            className={`shrink-0 text-fg-3 transition-transform ${open ? "rotate-180" : ""}`}
           />
         </button>
 
@@ -155,13 +155,13 @@ export function DropdownSelect({
                 }}
                 onMouseEnter={() => setFocusIndex(i)}
                 className={`flex w-full items-center px-2.5 text-left text-sm transition-colors ${
-                  size === 'compact' ? 'py-0.5' : 'py-1'
+                  size === "compact" ? "py-0.5" : "py-1"
                 } ${
                   option.value === value
-                    ? 'bg-surface-2 text-fg font-medium'
+                    ? "bg-surface-2 text-fg font-medium"
                     : i === focusIndex
-                      ? 'bg-surface-2 text-fg'
-                      : 'text-fg-2 hover:bg-surface-2'
+                      ? "bg-surface-2 text-fg"
+                      : "text-fg-2 hover:bg-surface-2"
                 }`}
               >
                 {option.label}
@@ -170,9 +170,7 @@ export function DropdownSelect({
           </div>
         )}
       </div>
-      {error && (
-        <p className="mt-1 text-xs text-red">{error}</p>
-      )}
+      {error && <p className="mt-1 text-xs text-red">{error}</p>}
     </div>
   );
 }

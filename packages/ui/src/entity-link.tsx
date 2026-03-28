@@ -1,7 +1,12 @@
-import React from 'react';
-import { Avatar } from './avatar';
+import React from "react";
+import { Avatar } from "./avatar";
 
-export type EntityLinkVariant = 'default' | 'accent-green' | 'accent-blue' | 'accent-orange' | 'accent-purple';
+export type EntityLinkVariant =
+  | "default"
+  | "accent-green"
+  | "accent-blue"
+  | "accent-orange"
+  | "accent-purple";
 
 interface EntityLinkProps {
   /** Display name/label */
@@ -13,7 +18,7 @@ interface EntityLinkProps {
   /** Entity color (for name/avatar) */
   color?: string;
   /** Size variant */
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   /** Whether to show avatar */
   showAvatar?: boolean;
   /** Avatar image URL */
@@ -30,15 +35,15 @@ interface EntityLinkProps {
   className?: string;
 }
 
-const textSizes = { sm: 'text-xs', md: 'text-sm' } as const;
-const avatarSizes = { sm: 'xs', md: 'sm' } as const;
+const textSizes = { sm: "text-xs", md: "text-sm" } as const;
+const avatarSizes = { sm: "xs", md: "sm" } as const;
 
 const variantStyles: Record<EntityLinkVariant, string> = {
-  default: 'hover:bg-surface-3',
-  'accent-green': 'text-green hover:bg-green-light hover:underline',
-  'accent-blue': 'text-blue hover:bg-blue-light hover:underline',
-  'accent-orange': 'text-orange hover:bg-orange-light hover:underline',
-  'accent-purple': 'text-purple hover:bg-purple-light hover:underline',
+  default: "hover:bg-surface-3",
+  "accent-green": "text-green hover:bg-green-light hover:underline",
+  "accent-blue": "text-blue hover:bg-blue-light hover:underline",
+  "accent-orange": "text-orange hover:bg-orange-light hover:underline",
+  "accent-purple": "text-purple hover:bg-purple-light hover:underline",
 };
 
 /**
@@ -50,14 +55,14 @@ export function EntityLink({
   onClick,
   secondaryInfo,
   color,
-  size = 'sm',
+  size = "sm",
   showAvatar = true,
   avatarUrl,
   prefix,
-  variant = 'default',
+  variant = "default",
   leading,
   title,
-  className = '',
+  className = "",
 }: EntityLinkProps) {
   const displayLabel = prefix ? `${prefix}${label}` : label;
   const tooltip = title ?? (secondaryInfo ? `${label} - ${secondaryInfo}` : label);
@@ -69,15 +74,8 @@ export function EntityLink({
       title={tooltip}
     >
       {leading}
-      {showAvatar && (
-        <Avatar
-          name={label}
-          src={avatarUrl}
-          color={color}
-          size={avatarSizes[size]}
-        />
-      )}
-      <span style={color && variant === 'default' ? { color } : undefined} className="font-medium">
+      {showAvatar && <Avatar name={label} src={avatarUrl} color={color} size={avatarSizes[size]} />}
+      <span style={color && variant === "default" ? { color } : undefined} className="font-medium">
         {displayLabel}
       </span>
     </button>

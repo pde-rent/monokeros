@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface PendingFileBadgeProps {
   fileName: string;
@@ -10,15 +10,14 @@ interface PendingFileBadgeProps {
  * A badge for displaying pending file attachments with a remove button.
  * Pattern: rounded-sm border bg px-2 py-1 text-xs
  */
-export function PendingFileBadge({ fileName, onRemove, maxWidth = '140px' }: PendingFileBadgeProps) {
+export function PendingFileBadge({
+  fileName,
+  onRemove,
+  maxWidth = "140px",
+}: PendingFileBadgeProps) {
   return (
-    <div
-      className="inline-flex items-center gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1 text-xs"
-    >
-      <span
-        className="truncate text-fg"
-        style={{ maxWidth }}
-      >
+    <div className="inline-flex items-center gap-1.5 rounded-sm border border-edge bg-surface px-2 py-1 text-xs">
+      <span className="truncate text-fg" style={{ maxWidth }}>
         {fileName}
       </span>
       <button

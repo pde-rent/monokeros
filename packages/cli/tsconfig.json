@@ -1,0 +1,11 @@
+{
+  "extends": "@monokeros/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@monokeros/mcp/api-client": ["../mcp/src/api-client.ts"]
+    }
+  },
+  "include": ["src"]
+}

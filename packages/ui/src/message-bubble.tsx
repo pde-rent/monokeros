@@ -1,9 +1,9 @@
-import type { MessageReaction } from '@monokeros/types';
-import { MessageActions } from './message-actions';
-import { MessageReactions } from './message-reactions';
+import type { MessageReaction } from "@monokeros/types";
+import { MessageActions } from "./message-actions";
+import { MessageReactions } from "./message-reactions";
 
 interface MessageBubbleProps {
-  variant: 'user' | 'assistant';
+  variant: "user" | "assistant";
   children: React.ReactNode;
   reactions?: MessageReaction[];
   onCopy?: () => void;
@@ -25,7 +25,7 @@ export function MessageBubble({
   const hasReactions = reactions.length > 0 && onReact;
 
   return (
-    <div className={`flex ${variant === 'user' ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${variant === "user" ? "justify-end" : "justify-start"}`}>
       <div className="group relative max-w-[80%]">
         {/* Hover actions toolbar - positioned below bubble */}
         {hasActions && (
@@ -34,16 +34,14 @@ export function MessageBubble({
             onReply={onReply || (() => {})}
             onForward={onForward || (() => {})}
             onReact={onReact || (() => {})}
-            className={`${variant === 'user' ? '-left-2' : '-right-2'} bottom-0`}
+            className={`${variant === "user" ? "-left-2" : "-right-2"} bottom-0`}
           />
         )}
 
         {/* Message bubble */}
         <div
           className={`px-3 py-2 rounded-lg ${
-            variant === 'user'
-              ? 'bg-blue-light text-fg'
-              : 'bg-elevated border border-edge text-fg'
+            variant === "user" ? "bg-blue-light text-fg" : "bg-elevated border border-edge text-fg"
           }`}
         >
           {children}
@@ -51,7 +49,7 @@ export function MessageBubble({
 
         {/* Reactions - positioned below bubble, aligned to start/end based on variant */}
         {hasReactions && (
-          <div className={`flex ${variant === 'user' ? 'justify-end' : 'justify-start'} -mt-1`}>
+          <div className={`flex ${variant === "user" ? "justify-end" : "justify-start"} -mt-1`}>
             <MessageReactions reactions={reactions} onReact={onReact} />
           </div>
         )}

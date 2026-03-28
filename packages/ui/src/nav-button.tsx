@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface NavButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isActive?: boolean;
@@ -14,15 +14,15 @@ interface NavButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function NavButton({
   isActive = false,
   children,
-  className = '',
+  className = "",
   ...props
 }: NavButtonProps) {
   return (
     <button
       className={`block w-full px-3 py-1 text-left text-xs transition-colors ${
         isActive
-          ? 'bg-blue-light font-semibold text-fg'
-          : 'text-fg-2 hover:bg-surface-3 hover:text-fg'
+          ? "bg-blue-light font-semibold text-fg"
+          : "text-fg-2 hover:bg-surface-3 hover:text-fg"
       } ${className}`}
       {...props}
     >

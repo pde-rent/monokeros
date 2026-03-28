@@ -1,5 +1,5 @@
-declare module 'markdown-it-texmath' {
-  import type MarkdownIt from 'markdown-it';
+declare module "markdown-it-texmath" {
+  import type MarkdownIt from "markdown-it";
   interface TexmathOptions {
     engine: unknown;
     delimiters: string;
@@ -9,7 +9,7 @@ declare module 'markdown-it-texmath' {
   export default plugin;
 }
 
-declare module 'temml' {
+declare module "temml" {
   const temml: {
     renderToString: (tex: string, options?: Record<string, unknown>) => string;
     renderToMathMLTree: (tex: string, options?: Record<string, unknown>) => unknown;

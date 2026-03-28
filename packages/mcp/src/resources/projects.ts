@@ -1,11 +1,11 @@
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { ApiClient } from '../api-client';
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ApiClient } from "../api-client";
 
 export function registerProjectResources(server: McpServer, api: ApiClient) {
   server.resource(
-    'projects-list',
-    'monokeros://projects',
-    { description: 'All projects as JSON', mimeType: 'application/json' },
+    "projects-list",
+    "monokeros://projects",
+    { description: "All projects as JSON", mimeType: "application/json" },
     async (uri) => {
       const projects = await api.listProjects();
       return {
@@ -15,8 +15,8 @@ export function registerProjectResources(server: McpServer, api: ApiClient) {
   );
 
   server.resource(
-    'project-detail',
-    new ResourceTemplate('monokeros://projects/{projectId}', {
+    "project-detail",
+    new ResourceTemplate("monokeros://projects/{projectId}", {
       list: async () => {
         const projects = await api.listProjects();
         return {
@@ -27,7 +27,7 @@ export function registerProjectResources(server: McpServer, api: ApiClient) {
         };
       },
     }),
-    { description: 'Project details with SDLC gates as JSON', mimeType: 'application/json' },
+    { description: "Project details with SDLC gates as JSON", mimeType: "application/json" },
     async (uri, { projectId }) => {
       const project = await api.getProject(projectId as string);
       return {

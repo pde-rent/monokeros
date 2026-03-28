@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 import {
   AiProvider,
   ArtifactType,
@@ -10,13 +10,17 @@ import {
   WorkspaceStatus,
   MessageReferenceType,
   HumanAcceptanceAction,
-} from './enums';
+} from "./enums";
 
-export const DEFAULT_ENTITY_COLOR = '#6366f1';
+export const DEFAULT_ENTITY_COLOR = "#6366f1";
 
 // Task type definition schema
 export const taskTypeDefinitionSchema = z.object({
-  name: z.string().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   label: z.string().min(1).max(50),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 });
@@ -47,7 +51,7 @@ export const taskArtifactSchema = z.object({
 // Git repo binding schema
 export const gitRepoBindingSchema = z.object({
   url: z.string().min(1),
-  defaultBranch: z.string().min(1).default('main'),
+  defaultBranch: z.string().min(1).default("main"),
   provider: z.string().nullable().default(null),
 });
 
@@ -60,7 +64,7 @@ export const dodCriterionSchema = z.object({
 // Task schemas
 export const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
-  description: z.string().max(5000).default(''),
+  description: z.string().max(5000).default(""),
   type: z.string().min(1).max(50).nullable().default(null),
   projectId: z.string().nullable().default(null),
   priority: z.nativeEnum(TaskPriority).default(TaskPriority.MEDIUM),
@@ -146,11 +150,13 @@ export const updateMemberSchema = z.object({
   isLead: z.boolean().optional(),
   avatarUrl: z.string().nullable().optional(),
   gender: memberGenderSchema.optional(),
-  identity: z.object({
-    soul: z.string().min(1).max(5000),
-    skills: z.array(z.string().min(1)).min(1),
-    memory: z.array(z.string()).default([]),
-  }).optional(),
+  identity: z
+    .object({
+      soul: z.string().min(1).max(5000),
+      skills: z.array(z.string().min(1)).min(1),
+      memory: z.array(z.string()).default([]),
+    })
+    .optional(),
   modelConfig: agentModelConfigSchema.nullable().optional(),
   permissions: z.array(z.string()).optional(),
 });
@@ -169,9 +175,16 @@ export const updateGateSchema = z.object({
 // Project CRUD schemas
 export const createProjectSchema = z.object({
   name: z.string().min(1).max(100),
-  slug: z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  description: z.string().max(2000).default(''),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default(DEFAULT_ENTITY_COLOR),
+  slug: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  description: z.string().max(2000).default(""),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default(DEFAULT_ENTITY_COLOR),
   types: z.array(z.string().min(1)).min(1),
   phases: z.array(z.string().min(1)).min(1),
   assignedTeamIds: z.array(z.string()).default([]),
@@ -182,9 +195,17 @@ export const createProjectSchema = z.object({
 
 export const updateProjectSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  slug: z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   description: z.string().max(2000).optional(),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
   types: z.array(z.string().min(1)).min(1).optional(),
   phases: z.array(z.string().min(1)).min(1).optional(),
   status: z.nativeEnum(TaskStatus).optional(),
@@ -198,7 +219,10 @@ export const updateProjectSchema = z.object({
 export const createTeamSchema = z.object({
   name: z.string().min(1).max(100),
   type: z.string().min(1).max(50),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default(DEFAULT_ENTITY_COLOR),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default(DEFAULT_ENTITY_COLOR),
   leadId: z.string(),
   memberIds: z.array(z.string()).default([]),
 });
@@ -206,7 +230,10 @@ export const createTeamSchema = z.object({
 export const updateTeamSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   type: z.string().min(1).max(50).optional(),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
   leadId: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
 });
@@ -215,12 +242,21 @@ export const updateTeamSchema = z.object({
 export const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(100),
   displayName: z.string().min(1).max(100),
-  slug: z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  slug: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   industry: z.nativeEnum(WorkspaceIndustry).default(WorkspaceIndustry.SOFTWARE_DEVELOPMENT),
-  branding: z.object({
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default(DEFAULT_ENTITY_COLOR),
-    logo: z.string().optional(),
-  }).optional(),
+  branding: z
+    .object({
+      color: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default(DEFAULT_ENTITY_COLOR),
+      logo: z.string().optional(),
+    })
+    .optional(),
   taskTypes: z.array(taskTypeDefinitionSchema).optional(),
   providers: z.array(providerConfigSchema).optional(),
   defaultProviderId: z.nativeEnum(AiProvider).optional(),
@@ -229,13 +265,23 @@ export const createWorkspaceSchema = z.object({
 
 export const updateWorkspaceSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
-  slug: z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   industry: z.nativeEnum(WorkspaceIndustry).optional(),
   industrySubtype: z.string().nullable().optional(),
-  branding: z.object({
-    logo: z.string().nullable().optional(),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  }).optional(),
+  branding: z
+    .object({
+      logo: z.string().nullable().optional(),
+      color: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .optional(),
+    })
+    .optional(),
   taskTypes: z.array(taskTypeDefinitionSchema).optional(),
   status: z.nativeEnum(WorkspaceStatus).optional(),
   providers: z.array(providerConfigSchema).optional(),
@@ -255,11 +301,15 @@ export const renameConversationSchema = z.object({
 
 export const sendMessageSchema = z.object({
   content: z.string().min(1).max(10000),
-  references: z.array(z.object({
-    type: z.nativeEnum(MessageReferenceType),
-    id: z.string(),
-    display: z.string(),
-  })).default([]),
+  references: z
+    .array(
+      z.object({
+        type: z.nativeEnum(MessageReferenceType),
+        id: z.string(),
+        display: z.string(),
+      }),
+    )
+    .default([]),
 });
 
 // API key schemas

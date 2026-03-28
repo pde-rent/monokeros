@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
 interface CheckboxGroupProps<T> {
   items: T[];
@@ -17,12 +17,10 @@ export function CheckboxGroup<T>({
   onChange,
   getId,
   getLabel,
-  className = '',
+  className = "",
 }: CheckboxGroupProps<T>) {
   function toggle(id: string) {
-    onChange(
-      selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id],
-    );
+    onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
   }
 
   return (

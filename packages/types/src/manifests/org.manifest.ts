@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { manifestBase, nameRegex } from './common';
+import { z } from "zod";
+import { manifestBase, nameRegex } from "./common";
 
 const unitSchema = z.object({
   name: z.string().regex(nameRegex),
@@ -8,14 +8,16 @@ const unitSchema = z.object({
   members: z.array(z.string().regex(nameRegex)).default([]),
 });
 
-export const orgManifestSchema = manifestBase('Org').extend({
+export const orgManifestSchema = manifestBase("Org").extend({
   spec: z.object({
     directors: z.array(z.string().regex(nameRegex)).default([]),
-    structure: z.object({
-      departments: z.array(unitSchema).default([]),
-      squads: z.array(unitSchema).default([]),
-      taskforces: z.array(unitSchema).default([]),
-    }).default({}),
+    structure: z
+      .object({
+        departments: z.array(unitSchema).default([]),
+        squads: z.array(unitSchema).default([]),
+        taskforces: z.array(unitSchema).default([]),
+      })
+      .default({}),
     reporting: z.record(z.string().regex(nameRegex)).default({}),
   }),
 });

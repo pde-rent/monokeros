@@ -1,29 +1,30 @@
+// oxlint-disable-next-line typescript-eslint/triple-slash-reference
 /// <reference path="../vendor.d.ts" />
-import MarkdownIt from 'markdown-it';
-import Prism from 'prismjs';
-import texmath from 'markdown-it-texmath';
-import temml from 'temml';
-import { mermaidPlugin } from './plugins/mermaid';
-import { mentionLinksPlugin } from './plugins/mention-links';
-import { headingIdsPlugin } from './plugins/heading-ids';
+import MarkdownIt from "markdown-it";
+import Prism from "prismjs";
+import texmath from "markdown-it-texmath";
+import temml from "temml";
+import { mermaidPlugin } from "./plugins/mermaid";
+import { mentionLinksPlugin } from "./plugins/mention-links";
+import { headingIdsPlugin } from "./plugins/heading-ids";
 
 // Load additional Prism languages
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-yaml';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-java';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-toml';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-swift';
-import 'prismjs/components/prism-kotlin';
-import 'prismjs/components/prism-php';
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-bash";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-yaml";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-markup";
+import "prismjs/components/prism-rust";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-toml";
+import "prismjs/components/prism-ruby";
+import "prismjs/components/prism-swift";
+import "prismjs/components/prism-kotlin";
+import "prismjs/components/prism-php";
 
 /**
  * Create a configured markdown-it instance with all plugins.
@@ -46,7 +47,7 @@ export function createMarkdownPipeline(): MarkdownIt {
   // LaTeX math via Temml (lighter alternative to KaTeX)
   md.use(texmath, {
     engine: temml,
-    delimiters: 'dollars',
+    delimiters: "dollars",
   });
 
   // Mermaid code blocks -> placeholder divs

@@ -1,0 +1,31 @@
+{
+  "name": "@monokeros/cli",
+  "version": "0.0.1",
+  "private": true,
+  "bin": {
+    "mk": "./src/bin.ts",
+    "monokeros": "./src/bin.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "start": "bun src/bin.ts",
+    "typecheck": "tsgo --noEmit",
+    "lint": "echo 'lint passed'",
+    "build": "bun build --compile --minify src/bin.ts --outfile dist/mk"
+  },
+  "dependencies": {
+    "@monokeros/constants": "workspace:*",
+    "@monokeros/mcp": "workspace:*",
+    "@monokeros/types": "workspace:*",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.0",
+    "cli-table3": "^0.6.5",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@monokeros/config": "workspace:*",
+    "@types/bun": "^1.0.0",
+    "typescript": "^5.7.0"
+  }
+}

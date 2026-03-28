@@ -1,4 +1,4 @@
-import type { WorkspaceManifest, AgentManifest, TeamManifest } from '@monokeros/types';
+import type { WorkspaceManifest, AgentManifest, TeamManifest } from "@monokeros/types";
 
 export interface TemplateManifest {
   id: string;
@@ -10,7 +10,7 @@ export interface TemplateManifest {
   icon: string;
   category: TemplateCategory;
   tags: string[];
-  pricing: 'free' | 'premium';
+  pricing: "free" | "premium";
   agentCount: number;
   teamCount: number;
   workspace: WorkspaceManifest;
@@ -18,7 +18,16 @@ export interface TemplateManifest {
   teams: TeamManifest[];
 }
 
-export type TemplateCategory = 'legal' | 'software' | 'marketing' | 'consulting' | 'content_media' | 'custom';
+export type TemplateCategory =
+  | "legal"
+  | "software"
+  | "marketing"
+  | "consulting"
+  | "content_media"
+  | "custom";
 
 /** Lightweight listing (no manifests — for catalog view) */
-export type TemplateListing = Omit<TemplateManifest, 'workspace' | 'agents' | 'teams' | 'longDescription'>;
+export type TemplateListing = Omit<
+  TemplateManifest,
+  "workspace" | "agents" | "teams" | "longDescription"
+>;

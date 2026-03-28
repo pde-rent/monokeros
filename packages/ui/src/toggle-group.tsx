@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface Option<T extends string> {
   value: T;
@@ -13,9 +13,14 @@ interface ToggleGroupProps<T extends string> {
   className?: string;
 }
 
-export function ToggleGroup<T extends string>({ options, value, onChange, className }: ToggleGroupProps<T>) {
+export function ToggleGroup<T extends string>({
+  options,
+  value,
+  onChange,
+  className,
+}: ToggleGroupProps<T>) {
   return (
-    <div className={`flex ${className ?? ''}`}>
+    <div className={`flex ${className ?? ""}`}>
       {options.map((option, i) => {
         const isActive = value === option.value;
         return (
@@ -23,12 +28,8 @@ export function ToggleGroup<T extends string>({ options, value, onChange, classN
             key={option.value}
             onClick={() => onChange(option.value)}
             className={`flex-1 py-1 text-xs transition-colors flex items-center justify-center gap-1 ${
-              i > 0 ? 'border-l border-edge' : ''
-            } ${
-              isActive
-                ? 'bg-blue-light text-fg font-medium'
-                : 'text-fg-2 hover:text-fg'
-            }`}
+              i > 0 ? "border-l border-edge" : ""
+            } ${isActive ? "bg-blue-light text-fg font-medium" : "text-fg-2 hover:text-fg"}`}
           >
             {option.icon}
             {option.label}

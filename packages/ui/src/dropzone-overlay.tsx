@@ -1,5 +1,5 @@
-import React from 'react';
-import { CloudArrowUpIcon } from '@phosphor-icons/react';
+import React from "react";
+import { CloudArrowUpIcon } from "@phosphor-icons/react";
 
 interface DropzoneOverlayProps {
   visible: boolean;
@@ -13,7 +13,7 @@ interface DropzoneOverlayProps {
  */
 export function DropzoneOverlay({
   visible,
-  label = 'Drop files here',
+  label = "Drop files here",
   icon,
 }: DropzoneOverlayProps) {
   if (!visible) return null;

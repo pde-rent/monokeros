@@ -1,7 +1,17 @@
-import React from 'react';
+import React from "react";
 
-type InputVariant = 'default' | 'transparent' | 'compact';
-type InputSize = 'sm' | 'md';
+/** Form-level error banner. Renders nothing if `error` is falsy. */
+export function FormError({ error }: { error: string }) {
+  if (!error) return null;
+  return (
+    <div className="border border-red bg-red-light px-3 py-2 text-xs text-red rounded-sm">
+      {error}
+    </div>
+  );
+}
+
+type InputVariant = "default" | "transparent" | "compact";
+type InputSize = "sm" | "md";
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -30,26 +40,26 @@ const variantStyles: Record<InputVariant, string> = {
 };
 
 const sizeStyles: Record<InputSize, string> = {
-  sm: 'px-2 py-0.5 text-sm',
-  md: 'px-3 py-1.5 text-sm',
+  sm: "px-2 py-0.5 text-sm",
+  md: "px-3 py-1.5 text-sm",
 };
 
 export function Input({
   label,
   error,
-  variant = 'default',
-  inputSize = 'md',
+  variant = "default",
+  inputSize = "md",
   id,
-  className = '',
+  className = "",
   ...props
 }: InputProps) {
-  const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
-  const isCompact = variant === 'compact';
-  const resolvedSize = isCompact ? 'sm' : inputSize;
-  const radius = isCompact ? 'sm' : 'md';
+  const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined);
+  const isCompact = variant === "compact";
+  const resolvedSize = isCompact ? "sm" : inputSize;
+  const radius = isCompact ? "sm" : "md";
 
   // Transparent variant has no wrapper/label
-  if (variant === 'transparent') {
+  if (variant === "transparent") {
     return (
       <input
         id={inputId}
@@ -72,7 +82,7 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className={`${isCompact ? 'mb-1 block ' : ''}text-[10px] font-medium uppercase tracking-wider text-fg-3`}
+          className={`${isCompact ? "mb-1 block " : ""}text-[10px] font-medium uppercase tracking-wider text-fg-3`}
         >
           {label}
         </label>
@@ -80,8 +90,8 @@ export function Input({
       <input
         id={inputId}
         className={`
-          ${isCompact ? '' : 'mt-1 '}w-full
-          ${radius === 'sm' ? 'rounded-sm' : 'rounded-md'}
+          ${isCompact ? "" : "mt-1 "}w-full
+          ${radius === "sm" ? "rounded-sm" : "rounded-md"}
           text-fg
           outline-none
           transition-colors
@@ -89,14 +99,12 @@ export function Input({
           disabled:opacity-50
           ${variantStyles[variant]}
           ${sizeStyles[resolvedSize]}
-          ${error ? 'border-red' : ''}
+          ${error ? "border-red" : ""}
           ${className}
         `}
         {...props}
       />
-      {error && (
-        <p className="mt-1 text-xs text-red">{error}</p>
-      )}
+      {error && <p className="mt-1 text-xs text-red">{error}</p>}
     </div>
   );
 }
@@ -106,13 +114,17 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
   error?: string;
 }
 
-export function Textarea({ label, error, id, className = '', ...props }: TextareaProps) {
-  const textareaId = id || (label ? `textarea-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+export function Textarea({ label, error, id, className = "", ...props }: TextareaProps) {
+  const textareaId =
+    id || (label ? `textarea-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined);
 
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={textareaId} className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
+        <label
+          htmlFor={textareaId}
+          className="text-[10px] font-medium uppercase tracking-wider text-fg-3"
+        >
           {label}
         </label>
       )}
@@ -130,14 +142,12 @@ export function Textarea({ label, error, id, className = '', ...props }: Textare
           placeholder:text-fg-3
           focus:border-blue
           disabled:opacity-50
-          ${error ? 'border-red' : ''}
+          ${error ? "border-red" : ""}
           ${className}
         `}
         {...props}
       />
-      {error && (
-        <p className="mt-1 text-xs text-red">{error}</p>
-      )}
+      {error && <p className="mt-1 text-xs text-red">{error}</p>}
     </div>
   );
 }
@@ -147,24 +157,33 @@ interface SelectOption {
   label: string;
 }
 
-interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "children"> {
   label?: string;
   error?: string;
   options: SelectOption[];
   placeholder?: string;
-  variant?: 'default' | 'compact';
+  variant?: "default" | "compact";
 }
 
-export function Select({ label, error, id, options, placeholder, variant = 'default', className = '', ...props }: SelectProps) {
-  const selectId = id || (label ? `select-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
-  const isCompact = variant === 'compact';
+export function Select({
+  label,
+  error,
+  id,
+  options,
+  placeholder,
+  variant = "default",
+  className = "",
+  ...props
+}: SelectProps) {
+  const selectId = id || (label ? `select-${label.toLowerCase().replace(/\s+/g, "-")}` : undefined);
+  const isCompact = variant === "compact";
 
   return (
     <div className="w-full">
       {label && (
         <label
           htmlFor={selectId}
-          className={`${isCompact ? 'mb-1 block ' : ''}text-[10px] font-medium uppercase tracking-wider text-fg-3`}
+          className={`${isCompact ? "mb-1 block " : ""}text-[10px] font-medium uppercase tracking-wider text-fg-3`}
         >
           {label}
         </label>
@@ -172,17 +191,17 @@ export function Select({ label, error, id, options, placeholder, variant = 'defa
       <select
         id={selectId}
         className={`
-          ${isCompact ? '' : 'mt-1 '}w-full
-          ${isCompact ? 'rounded-sm' : 'rounded-md'}
+          ${isCompact ? "" : "mt-1 "}w-full
+          ${isCompact ? "rounded-sm" : "rounded-md"}
           border border-edge
-          ${isCompact ? 'bg-surface' : 'bg-surface-2'}
-          ${isCompact ? 'px-2 py-0.5' : 'px-3 py-1.5'}
+          ${isCompact ? "bg-surface" : "bg-surface-2"}
+          ${isCompact ? "px-2 py-0.5" : "px-3 py-1.5"}
           text-sm text-fg
           outline-none
           transition-colors
           focus:border-blue
           disabled:opacity-50
-          ${error ? 'border-red' : ''}
+          ${error ? "border-red" : ""}
           ${className}
         `}
         {...props}
@@ -198,9 +217,7 @@ export function Select({ label, error, id, options, placeholder, variant = 'defa
           </option>
         ))}
       </select>
-      {error && (
-        <p className="mt-1 text-xs text-red">{error}</p>
-      )}
+      {error && <p className="mt-1 text-xs text-red">{error}</p>}
     </div>
   );
 }

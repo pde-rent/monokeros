@@ -1,11 +1,11 @@
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { ApiClient } from '../api-client';
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ApiClient } from "../api-client";
 
 export function registerMemberResources(server: McpServer, api: ApiClient) {
   server.resource(
-    'members-list',
-    'monokeros://members',
-    { description: 'All workspace members as JSON', mimeType: 'application/json' },
+    "members-list",
+    "monokeros://members",
+    { description: "All workspace members as JSON", mimeType: "application/json" },
     async (uri) => {
       const members = await api.listMembers();
       const safe = members.map(({ passwordHash: _, ...m }) => m);
@@ -16,8 +16,8 @@ export function registerMemberResources(server: McpServer, api: ApiClient) {
   );
 
   server.resource(
-    'member-detail',
-    new ResourceTemplate('monokeros://members/{memberId}', {
+    "member-detail",
+    new ResourceTemplate("monokeros://members/{memberId}", {
       list: async () => {
         const members = await api.listMembers();
         return {
@@ -28,7 +28,7 @@ export function registerMemberResources(server: McpServer, api: ApiClient) {
         };
       },
     }),
-    { description: 'Single member details as JSON', mimeType: 'application/json' },
+    { description: "Single member details as JSON", mimeType: "application/json" },
     async (uri, { memberId }) => {
       const member = await api.getMember(memberId as string);
       const { passwordHash: _, ...safe } = member;

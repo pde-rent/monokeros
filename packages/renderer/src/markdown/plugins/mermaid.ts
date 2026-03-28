@@ -1,4 +1,4 @@
-import type MarkdownIt from 'markdown-it';
+import type MarkdownIt from "markdown-it";
 
 /**
  * Custom markdown-it plugin for mermaid code blocks.
@@ -12,13 +12,13 @@ export function mermaidPlugin(md: MarkdownIt): void {
     const token = tokens[idx];
     const info = token.info.trim().toLowerCase();
 
-    if (info === 'mermaid') {
-      const encoded = Buffer.from(token.content).toString('base64');
+    if (info === "mermaid") {
+      const encoded = Buffer.from(token.content).toString("base64");
       const escaped = md.utils.escapeHtml(token.content);
       return (
-        `<div class="mermaid-diagram" data-source="${encoded}">`
-        + `<pre class="mermaid-source"><code>${escaped}</code></pre>`
-        + `</div>`
+        `<div class="mermaid-diagram" data-source="${encoded}">` +
+        `<pre class="mermaid-source"><code>${escaped}</code></pre>` +
+        `</div>`
       );
     }
 

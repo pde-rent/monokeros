@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface StatusBadgeProps {
   label: string;
@@ -6,7 +6,7 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({ label, color, className = '' }: StatusBadgeProps) {
+export function StatusBadge({ label, color, className = "" }: StatusBadgeProps) {
   return (
     <span
       className={`inline-block rounded-sm px-1.5 py-0.5 text-[10px] font-medium capitalize ${className}`}

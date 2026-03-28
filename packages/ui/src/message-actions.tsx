@@ -1,10 +1,15 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { CopyIcon, ArrowBendUpLeftIcon, ArrowBendUpRightIcon, SmileyIcon } from '@phosphor-icons/react';
+import React from "react";
+import {
+  CopyIcon,
+  ArrowBendUpLeftIcon,
+  ArrowBendUpRightIcon,
+  SmileyIcon,
+} from "@phosphor-icons/react";
 
 /** Quick reaction emojis - displayed inline like Slack/Discord */
-const QUICK_EMOJIS = ['👍', '❤️', '🙏', '💯', '🔥', '😂', '😆', '😢', '👎', '👀'] as const;
+const QUICK_EMOJIS = ["👍", "❤️", "🙏", "💯", "🔥", "😂", "😆", "😢", "👎", "👀"] as const;
 
 interface MessageActionsProps {
   onCopy?: () => void;
@@ -14,9 +19,17 @@ interface MessageActionsProps {
   className?: string;
 }
 
-export function MessageActions({ onCopy, onReply, onForward, onReact, className = '' }: MessageActionsProps) {
+export function MessageActions({
+  onCopy,
+  onReply,
+  onForward,
+  onReact,
+  className = "",
+}: MessageActionsProps) {
   return (
-    <div className={`absolute flex items-center gap-0.5 rounded-sm border border-edge bg-elevated px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm ${className}`}>
+    <div
+      className={`absolute flex items-center gap-0.5 rounded-sm border border-edge bg-elevated px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm ${className}`}
+    >
       {/* Quick reactions - full list inline */}
       {QUICK_EMOJIS.map((emoji) => (
         <button
@@ -32,7 +45,9 @@ export function MessageActions({ onCopy, onReply, onForward, onReact, className 
 
       {/* More reactions button (for future emoji picker) */}
       <button
-        onClick={() => {/* TODO: Open full emoji picker */}}
+        onClick={() => {
+          /* TODO: Open full emoji picker */
+        }}
         title="More reactions"
         aria-label="More reactions"
         className="p-0.5 text-xs text-fg-2 hover:text-fg hover:bg-surface-3 rounded-sm"

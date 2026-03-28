@@ -2,43 +2,43 @@
  * Parse CSV/TSV content and render as an HTML table.
  * Lightweight implementation - no external dependency needed.
  */
-export function renderCSV(content: string, delimiter: string = ','): string {
-  const lines = content.trim().split('\n');
-  if (lines.length === 0) return '<p>Empty file</p>';
+export function renderCSV(content: string, delimiter: string = ","): string {
+  const lines = content.trim().split("\n");
+  if (lines.length === 0) return "<p>Empty file</p>";
 
   const rows = lines.map((line) => parseCsvLine(line, delimiter));
-  if (rows.length === 0) return '<p>Empty file</p>';
+  if (rows.length === 0) return "<p>Empty file</p>";
 
   let html = '<div class="csv-table-wrapper"><table class="csv-table">';
 
   // First row as header
-  html += '<thead><tr>';
+  html += "<thead><tr>";
   for (const cell of rows[0]) {
     html += `<th>${escapeHtml(cell)}</th>`;
   }
-  html += '</tr></thead>';
+  html += "</tr></thead>";
 
   // Remaining rows as body
   if (rows.length > 1) {
-    html += '<tbody>';
+    html += "<tbody>";
     for (let i = 1; i < rows.length; i++) {
-      html += '<tr>';
+      html += "<tr>";
       for (const cell of rows[i]) {
         html += `<td>${escapeHtml(cell)}</td>`;
       }
-      html += '</tr>';
+      html += "</tr>";
     }
-    html += '</tbody>';
+    html += "</tbody>";
   }
 
-  html += '</table></div>';
+  html += "</table></div>";
   return html;
 }
 
 /** Simple CSV line parser handling quoted fields */
 function parseCsvLine(line: string, delimiter: string): string[] {
   const fields: string[] = [];
-  let current = '';
+  let current = "";
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
@@ -59,7 +59,7 @@ function parseCsvLine(line: string, delimiter: string): string[] {
         inQuotes = true;
       } else if (ch === delimiter) {
         fields.push(current.trim());
-        current = '';
+        current = "";
       } else {
         current += ch;
       }
@@ -71,8 +71,8 @@ function parseCsvLine(line: string, delimiter: string): string[] {
 
 function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

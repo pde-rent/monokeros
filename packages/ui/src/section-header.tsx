@@ -1,5 +1,5 @@
-import React from 'react';
-import { XIcon } from '@phosphor-icons/react';
+import React from "react";
+import { XIcon } from "@phosphor-icons/react";
 
 interface SectionHeaderProps {
   title: string;
@@ -22,7 +22,7 @@ export function SectionHeader({
   icon,
   action,
   onClose,
-  className = '',
+  className = "",
 }: SectionHeaderProps) {
   return (
     <div
@@ -31,23 +31,14 @@ export function SectionHeader({
       <div className="flex items-center gap-2">
         {icon}
         <div>
-          <span className="text-xs font-semibold text-fg">
-            {title}
-          </span>
-          {subtitle && (
-            <p className="text-[10px] text-fg-3">
-              {subtitle}
-            </p>
-          )}
+          <span className="text-xs font-semibold text-fg">{title}</span>
+          {subtitle && <p className="text-[10px] text-fg-3">{subtitle}</p>}
         </div>
       </div>
       <div className="flex items-center gap-2">
         {action}
         {onClose && (
-          <button
-            onClick={onClose}
-            className="text-fg-3 hover:text-fg transition-colors"
-          >
+          <button onClick={onClose} className="text-fg-3 hover:text-fg transition-colors">
             <XIcon size={14} />
           </button>
         )}

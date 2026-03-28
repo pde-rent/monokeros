@@ -1,28 +1,34 @@
 #!/usr/bin/env bun
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ApiClient } from './api-client';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ApiClient } from "./api-client";
 
 // Tools
-import { registerMemberTools } from './tools/members';
-import { registerTeamTools } from './tools/teams';
-import { registerProjectTools } from './tools/projects';
-import { registerTaskTools } from './tools/tasks';
-import { registerConversationTools } from './tools/conversations';
-import { registerFileTools } from './tools/files';
-import { registerAgentTools } from './tools/agents';
-import { registerWorkspaceTools } from './tools/workspace';
-import { registerKnowledgeTools } from './tools/knowledge';
+import { registerMemberTools } from "./tools/members";
+import { registerTeamTools } from "./tools/teams";
+import { registerProjectTools } from "./tools/projects";
+import { registerTaskTools } from "./tools/tasks";
+import { registerConversationTools } from "./tools/conversations";
+import { registerFileTools } from "./tools/files";
+import { registerAgentTools } from "./tools/agents";
+import { registerWorkspaceTools } from "./tools/workspace";
+import { registerKnowledgeTools } from "./tools/knowledge";
+import { registerNotificationTools } from "./tools/notifications";
+import { registerModelTools } from "./tools/models";
+import { registerMetricTools } from "./tools/metrics";
+import { registerActivityTools } from "./tools/activities";
+import { registerWikiTools } from "./tools/wiki";
+import { registerTemplateTools } from "./tools/templates";
 
 // Resources
-import { registerMemberResources } from './resources/members';
-import { registerTeamResources } from './resources/teams';
-import { registerProjectResources } from './resources/projects';
-import { registerWorkspaceResources } from './resources/workspace';
+import { registerMemberResources } from "./resources/members";
+import { registerTeamResources } from "./resources/teams";
+import { registerProjectResources } from "./resources/projects";
+import { registerWorkspaceResources } from "./resources/workspace";
 
 const server = new McpServer({
-  name: 'monokeros',
-  version: '0.0.1',
+  name: "monokeros",
+  version: "0.0.1",
 });
 
 const api = new ApiClient();
@@ -49,6 +55,12 @@ registerFileTools(server, api);
 registerAgentTools(server, api);
 registerWorkspaceTools(server, api);
 registerKnowledgeTools(server, api);
+registerNotificationTools(server, api);
+registerModelTools(server, api);
+registerMetricTools(server, api);
+registerActivityTools(server, api);
+registerWikiTools(server, api);
+registerTemplateTools(server, api);
 
 // Register resources
 registerMemberResources(server, api);
@@ -61,12 +73,12 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   await server.close();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
+process.on("SIGTERM", async () => {
   await server.close();
   process.exit(0);
 });

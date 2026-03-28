@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useClickOutside } from './use-click-outside';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useClickOutside } from "./use-click-outside";
 
 export interface ContextMenuItem {
   id: string;
@@ -46,11 +46,11 @@ export function ContextMenu({ position, items, onSelect, onClose }: ContextMenuP
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
         return;
       }
-      if (e.key === 'ArrowDown') {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex((prev) => {
           const curIdx = selectableIndices.indexOf(prev);
@@ -58,7 +58,7 @@ export function ContextMenu({ position, items, onSelect, onClose }: ContextMenuP
           return selectableIndices[next];
         });
       }
-      if (e.key === 'ArrowUp') {
+      if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIndex((prev) => {
           const curIdx = selectableIndices.indexOf(prev);
@@ -66,7 +66,7 @@ export function ContextMenu({ position, items, onSelect, onClose }: ContextMenuP
           return selectableIndices[next];
         });
       }
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         e.preventDefault();
         if (activeIndex >= 0 && !items[activeIndex].separator && !items[activeIndex].disabled) {
           onSelect(items[activeIndex].id);
@@ -77,8 +77,8 @@ export function ContextMenu({ position, items, onSelect, onClose }: ContextMenuP
   );
 
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
   return (
@@ -101,14 +101,14 @@ export function ContextMenu({ position, items, onSelect, onClose }: ContextMenuP
             }}
             className={`flex w-full items-center gap-2 px-3 py-1 text-left text-sm transition-colors ${
               item.disabled
-                ? 'cursor-default text-fg-3'
+                ? "cursor-default text-fg-3"
                 : item.danger
                   ? activeIndex === i
-                    ? 'bg-red/10 text-red'
-                    : 'text-red hover:bg-red/10'
+                    ? "bg-red/10 text-red"
+                    : "text-red hover:bg-red/10"
                   : activeIndex === i
-                    ? 'bg-surface-3 text-fg'
-                    : 'text-fg-2 hover:bg-surface-3 hover:text-fg'
+                    ? "bg-surface-3 text-fg"
+                    : "text-fg-2 hover:bg-surface-3 hover:text-fg"
             }`}
           >
             {item.icon && <item.icon size={14} />}

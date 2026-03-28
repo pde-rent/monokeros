@@ -17,9 +17,8 @@ import {
   ConversationType,
   MessageReferenceType,
   FileEntryType,
-  KnowledgeSearchCategory,
-  KnowledgeSearchScope,
-} from './enums';
+  type AgentRuntimeType,
+} from "./enums";
 
 /** A provider credential configured at workspace level */
 export interface ProviderConfig {
@@ -49,6 +48,10 @@ export interface MemberStats {
   tasksCompleted: number;
   avgAgreementScore: number;
   activeProjects: number;
+  totalPromptTokens?: number;
+  totalCompletionTokens?: number;
+  totalTokens?: number;
+  totalCostUsd?: number;
 }
 
 export type MemberGender = 1 | 2; // 1 = male, 2 = female
@@ -75,6 +78,10 @@ export interface Member {
   supervisedTeamIds: string[];
   permissions?: string[];
   modelConfig: AgentModelConfig | null;
+  /** Agent runtime: "openclaw" or "zeroclaw". Defaults to "openclaw". */
+  runtime?: AgentRuntimeType;
+  /** Whether the agent has a desktop environment (VNC + Chrome). Defaults based on runtime. */
+  desktop?: boolean;
 }
 
 export interface Team {
@@ -207,9 +214,11 @@ export interface Task {
   id: string;
   workspaceId: string;
   title: string;
+  slug: string;
   description: string;
   type: string | null;
   projectId: string | null;
+  parentId: string | null;
   status: TaskStatus;
   priority: TaskPriority;
   assigneeIds: string[];
@@ -254,6 +263,7 @@ export interface Conversation {
   title: string;
   type: ConversationType;
   projectId: string | null;
+  taskId: string | null;
   participantIds: string[];
   lastMessageAt: string;
   messageCount: number;
@@ -363,31 +373,28 @@ export interface UpdateFileRequest {
   content: string;
 }
 
-export interface KnowledgeSearchResult {
-  category: KnowledgeSearchCategory;
-  ownerId: string;
-  path: string;
-  fileName: string;
-  scope: KnowledgeSearchScope;
-  scopeLabel: string;
-  snippet: string;
-  score: number;
-}
-
 export type Permission =
-  | 'members:read' | 'members:write' | 'members:manage'
-  | 'teams:read' | 'teams:write'
-  | 'projects:read' | 'projects:write' | 'projects:manage'
-  | 'tasks:read' | 'tasks:write'
-  | 'conversations:read' | 'conversations:write'
-  | 'files:read' | 'files:write'
-  | 'workspace:admin'
-  | '*';
+  | "members:read"
+  | "members:write"
+  | "members:manage"
+  | "teams:read"
+  | "teams:write"
+  | "projects:read"
+  | "projects:write"
+  | "projects:manage"
+  | "tasks:read"
+  | "tasks:write"
+  | "conversations:read"
+  | "conversations:write"
+  | "files:read"
+  | "files:write"
+  | "workspace:admin"
+  | "*";
 
 export interface ApiKey {
   id: string;
-  key: string;           // SHA-256 hash of the raw key
-  prefix: string;        // "mk_abc12345..." (first 11 chars for display)
+  key: string; // SHA-256 hash of the raw key
+  prefix: string; // "mk_abc12345..." (first 11 chars for display)
   memberId: string;
   workspaceId: string;
   name: string;
@@ -432,3 +439,104 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface NotificationCounts {
+  total: number;
+  unread: number;
+}
+
+// ── Token Usage (per-response event log) ────────────────────────────
+
+export interface TokenUsage {
+  id: string;
+  workspaceId: string;
+  memberId: string;
+  conversationId?: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+}
+
+// ── Resource Snapshots (sampled telemetry) ──────────────────────────
+
+export interface ResourceSnapshot {
+  id: string;
+  workspaceId: string;
+  memberId: string;
+  cpuPercent: number;
+  memoryMb: number;
+  windowCount: number;
+}
+
+// ── Container Stats (live from container service) ───────────────────
+
+export interface ContainerStats {
+  cpuPercent: number;
+  memoryMb: number;
+  windows: string[];
+  updatedAt: string | null;
+}
+
+// ── Desktop Session ─────────────────────────────────────────────────
+
+export interface DesktopSession {
+  wsUrl: string | null;
+  isAdmin: boolean;
+  viewOnly: boolean;
+}
+
+// ── Activity Feed ───────────────────────────────────────────────────
+
+export interface ActivityEntry {
+  id: string;
+  workspaceId: string;
+  actorId: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata?: unknown;
+}
+
+// ── Wiki ────────────────────────────────────────────────────────────
+
+export interface WikiNavItem {
+  id: string;
+  name: string;
+  path: string;
+  type: string;
+}
+
+export interface WikiPage {
+  id: string;
+  name: string;
+  path: string;
+  content: string;
+  modifiedAt: string;
+}
+
+// ── Templates ───────────────────────────────────────────────────────
+
+export interface TemplateInfo {
+  id: string;
+  name: string;
+  description: string;
+  industry: string;
+  teamCount: number;
+  agentCount: number;
+}
+
+export interface TemplateApplyResult {
+  workspaceId: string;
+  slug: string;
+  systemAgents: { mono: string; keros: string };
+}
+
+// ── Provider Registry ───────────────────────────────────────────────
+
+export interface ProviderInfo {
+  id: string;
+  name: string;
+  defaultBaseUrl: string;
+}

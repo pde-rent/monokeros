@@ -1,6 +1,6 @@
-import { getMarkdownPipeline } from './pipeline';
-import { sanitize } from '../sanitize';
-import type { RenderResult } from '../types';
+import { getMarkdownPipeline } from "./pipeline";
+import { sanitize } from "../sanitize";
+import type { RenderResult } from "../types";
 
 /**
  * Render markdown source to sanitized HTML.
@@ -12,8 +12,8 @@ export function renderMarkdown(source: string): RenderResult {
   const html = sanitize(rawHtml);
   return {
     html,
-    hasMermaid: rawHtml.includes('mermaid-diagram'),
-    hasMath: rawHtml.includes('<math'),
+    hasMermaid: rawHtml.includes("mermaid-diagram"),
+    hasMath: rawHtml.includes("<math"),
   };
 }
 

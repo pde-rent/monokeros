@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect, useCallback, createContext, useContext } from 'react';
-import { XIcon, CornersOutIcon, CopyIcon } from '@phosphor-icons/react';
+import React, { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
+import { XIcon, CornersOutIcon, CopyIcon } from "@phosphor-icons/react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type TileZone = 'left' | 'right' | 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | null;
+type TileZone =
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | null;
 
 interface TileRect {
   x: number;
@@ -27,14 +36,14 @@ function getTileRect(zone: TileZone): TileRect | null {
   const halfH = h / 2;
 
   const rects: Record<Exclude<TileZone, null>, TileRect> = {
-    'left': { x: 0, y: HEADER_HEIGHT, width: halfW, height: h },
-    'right': { x: halfW, y: HEADER_HEIGHT, width: halfW, height: h },
-    'top': { x: 0, y: HEADER_HEIGHT, width: w, height: halfH },
-    'bottom': { x: 0, y: HEADER_HEIGHT + halfH, width: w, height: halfH },
-    'top-left': { x: 0, y: HEADER_HEIGHT, width: halfW, height: halfH },
-    'top-right': { x: halfW, y: HEADER_HEIGHT, width: halfW, height: halfH },
-    'bottom-left': { x: 0, y: HEADER_HEIGHT + halfH, width: halfW, height: halfH },
-    'bottom-right': { x: halfW, y: HEADER_HEIGHT + halfH, width: halfW, height: halfH },
+    left: { x: 0, y: HEADER_HEIGHT, width: halfW, height: h },
+    right: { x: halfW, y: HEADER_HEIGHT, width: halfW, height: h },
+    top: { x: 0, y: HEADER_HEIGHT, width: w, height: halfH },
+    bottom: { x: 0, y: HEADER_HEIGHT + halfH, width: w, height: halfH },
+    "top-left": { x: 0, y: HEADER_HEIGHT, width: halfW, height: halfH },
+    "top-right": { x: halfW, y: HEADER_HEIGHT, width: halfW, height: halfH },
+    "bottom-left": { x: 0, y: HEADER_HEIGHT + halfH, width: halfW, height: halfH },
+    "bottom-right": { x: halfW, y: HEADER_HEIGHT + halfH, width: halfW, height: halfH },
   };
   return rects[zone] ?? null;
 }
@@ -49,14 +58,14 @@ function detectTileZone(x: number, y: number): TileZone {
   const nearTop = y < t + HEADER_HEIGHT;
   const nearBottom = y > h - t;
 
-  if (nearTop && nearLeft) return 'top-left';
-  if (nearTop && nearRight) return 'top-right';
-  if (nearBottom && nearLeft) return 'bottom-left';
-  if (nearBottom && nearRight) return 'bottom-right';
-  if (nearLeft) return 'left';
-  if (nearRight) return 'right';
-  if (nearTop) return 'top';
-  if (nearBottom) return 'bottom';
+  if (nearTop && nearLeft) return "top-left";
+  if (nearTop && nearRight) return "top-right";
+  if (nearBottom && nearLeft) return "bottom-left";
+  if (nearBottom && nearRight) return "bottom-right";
+  if (nearLeft) return "left";
+  if (nearRight) return "right";
+  if (nearTop) return "top";
+  if (nearBottom) return "bottom";
   return null;
 }
 
@@ -96,7 +105,7 @@ export function WindowProvider({ children }: { children: React.ReactNode }) {
 
   const tileWindow = useCallback((id: string, zone: TileZone) => {
     // Dispatch custom event that the Window component will listen to
-    window.dispatchEvent(new CustomEvent('window:tile', { detail: { id, zone } }));
+    window.dispatchEvent(new CustomEvent("window:tile", { detail: { id, zone } }));
   }, []);
 
   const registerWindow = useCallback((id: string) => {
@@ -119,17 +128,17 @@ export function WindowProvider({ children }: { children: React.ReactNode }) {
       if (e.metaKey || e.ctrlKey) {
         let zone: TileZone = null;
         switch (e.key) {
-          case 'ArrowLeft':
-            zone = e.shiftKey ? 'bottom-left' : 'left';
+          case "ArrowLeft":
+            zone = e.shiftKey ? "bottom-left" : "left";
             break;
-          case 'ArrowRight':
-            zone = e.shiftKey ? 'bottom-right' : 'right';
+          case "ArrowRight":
+            zone = e.shiftKey ? "bottom-right" : "right";
             break;
-          case 'ArrowUp':
-            zone = e.shiftKey ? 'top-left' : 'top';
+          case "ArrowUp":
+            zone = e.shiftKey ? "top-left" : "top";
             break;
-          case 'ArrowDown':
-            zone = e.shiftKey ? 'bottom' : 'bottom';
+          case "ArrowDown":
+            zone = e.shiftKey ? "bottom" : "bottom";
             break;
         }
         if (zone) {
@@ -139,8 +148,8 @@ export function WindowProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeWindowId, tileWindow]);
 
   return (
@@ -211,7 +220,7 @@ interface WindowProps {
   onClose: () => void;
   children: React.ReactNode;
   width?: number;
-  height?: number | 'auto';
+  height?: number | "auto";
   minWidth?: number;
   minHeight?: number;
   x?: number;
@@ -238,12 +247,12 @@ export function Window({
   resizable = true,
   maximizable = true,
   showMinimize = false,
-  className = '',
+  className = "",
 }: WindowProps) {
   const windowId = useRef(id || `window-${Math.random().toString(36).slice(2)}`);
   const { bringToFront, getZIndex, registerWindow, unregisterWindow } = useWindowManager();
 
-  const isAutoHeight = height === 'auto';
+  const isAutoHeight = height === "auto";
   const [position, setPosition] = useState({ x: x ?? -1, y: y ?? -1 });
   const [size, setSize] = useState({ width, height: isAutoHeight ? 0 : height });
   const [isMaximized, setIsMaximized] = useState(false);
@@ -255,7 +264,7 @@ export function Window({
   const windowRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const isResizing = useRef(false);
-  const resizeDir = useRef<string>('');
+  const resizeDir = useRef<string>("");
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({ x: 0, y: 0, width: 0, height: 0, windowX: 0, windowY: 0 });
 
@@ -299,8 +308,8 @@ export function Window({
       setIsMaximized(false);
     };
 
-    window.addEventListener('window:tile', handleTile as EventListener);
-    return () => window.removeEventListener('window:tile', handleTile as EventListener);
+    window.addEventListener("window:tile", handleTile as EventListener);
+    return () => window.removeEventListener("window:tile", handleTile as EventListener);
   }, [size, position, isTiled, isMaximized]);
 
   // Bring to front on click
@@ -311,7 +320,7 @@ export function Window({
   // ── Drag handling with tile preview ───────────────────────────────────────
 
   const handleTitleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest("button")) return;
     // Auto-height windows (dialogs) are not draggable
     if (isAutoHeight) return;
     e.preventDefault();
@@ -338,8 +347,8 @@ export function Window({
       y: e.clientY - position.y,
     };
     handleFocus();
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
   // ── Resize handling ──────────────────────────────────────────────────────
@@ -359,49 +368,52 @@ export function Window({
       windowY: position.y,
     };
     handleFocus();
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isDragging.current) {
-      const newX = e.clientX - dragOffset.current.x;
-      const newY = e.clientY - dragOffset.current.y;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (isDragging.current) {
+        const newX = e.clientX - dragOffset.current.x;
+        const newY = e.clientY - dragOffset.current.y;
 
-      // Detect tile zone during drag
-      const zone = detectTileZone(e.clientX, e.clientY);
-      setPreviewZone(zone);
+        // Detect tile zone during drag
+        const zone = detectTileZone(e.clientX, e.clientY);
+        setPreviewZone(zone);
 
-      setPosition({
-        x: Math.max(0, Math.min(window.innerWidth - 100, newX)),
-        y: Math.max(0, Math.min(window.innerHeight - 100, newY)),
-      });
-    }
-    if (isResizing.current) {
-      const dx = e.clientX - resizeStart.current.x;
-      const dy = e.clientY - resizeStart.current.y;
-      const dir = resizeDir.current;
-
-      let newWidth = resizeStart.current.width;
-      let newHeight = resizeStart.current.height;
-      let newX = resizeStart.current.windowX;
-      let newY = resizeStart.current.windowY;
-
-      if (dir.includes('e')) newWidth = Math.max(minWidth, resizeStart.current.width + dx);
-      if (dir.includes('w')) {
-        newWidth = Math.max(minWidth, resizeStart.current.width - dx);
-        newX = resizeStart.current.windowX + (resizeStart.current.width - newWidth);
+        setPosition({
+          x: Math.max(0, Math.min(window.innerWidth - 100, newX)),
+          y: Math.max(0, Math.min(window.innerHeight - 100, newY)),
+        });
       }
-      if (dir.includes('s')) newHeight = Math.max(minHeight, resizeStart.current.height + dy);
-      if (dir.includes('n')) {
-        newHeight = Math.max(minHeight, resizeStart.current.height - dy);
-        newY = resizeStart.current.windowY + (resizeStart.current.height - newHeight);
-      }
+      if (isResizing.current) {
+        const dx = e.clientX - resizeStart.current.x;
+        const dy = e.clientY - resizeStart.current.y;
+        const dir = resizeDir.current;
 
-      setSize({ width: newWidth, height: newHeight });
-      setPosition({ x: newX, y: newY });
-    }
-  }, [minWidth, minHeight]);
+        let newWidth = resizeStart.current.width;
+        let newHeight = resizeStart.current.height;
+        let newX = resizeStart.current.windowX;
+        let newY = resizeStart.current.windowY;
+
+        if (dir.includes("e")) newWidth = Math.max(minWidth, resizeStart.current.width + dx);
+        if (dir.includes("w")) {
+          newWidth = Math.max(minWidth, resizeStart.current.width - dx);
+          newX = resizeStart.current.windowX + (resizeStart.current.width - newWidth);
+        }
+        if (dir.includes("s")) newHeight = Math.max(minHeight, resizeStart.current.height + dy);
+        if (dir.includes("n")) {
+          newHeight = Math.max(minHeight, resizeStart.current.height - dy);
+          newY = resizeStart.current.windowY + (resizeStart.current.height - newHeight);
+        }
+
+        setSize({ width: newWidth, height: newHeight });
+        setPosition({ x: newX, y: newY });
+      }
+    },
+    [minWidth, minHeight],
+  );
 
   const handleMouseUp = useCallback(() => {
     // Apply tile zone on drop
@@ -422,8 +434,8 @@ export function Window({
     isDragging.current = false;
     isResizing.current = false;
     setPreviewZone(null);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
   }, [handleMouseMove, previewZone, isTiled, isMaximized, size, position]);
 
   // ── Maximize/Restore ─────────────────────────────────────────────────────
@@ -433,8 +445,17 @@ export function Window({
     if (isMaximized || isTiled) {
       setIsMaximized(false);
       setIsTiled(null);
-      setSize(prevSize.width > 0 ? prevSize : { width, height: isAutoHeight ? 400 : height as number });
-      setPosition(prevPosition.x >= 0 ? prevPosition : { x: (window.innerWidth - width) / 2, y: (window.innerHeight - (isAutoHeight ? 400 : height as number)) / 2 });
+      setSize(
+        prevSize.width > 0 ? prevSize : { width, height: isAutoHeight ? 400 : (height as number) },
+      );
+      setPosition(
+        prevPosition.x >= 0
+          ? prevPosition
+          : {
+              x: (window.innerWidth - width) / 2,
+              y: (window.innerHeight - (isAutoHeight ? 400 : (height as number))) / 2,
+            },
+      );
     } else {
       setPrevSize(size);
       setPrevPosition(position);
@@ -447,13 +468,13 @@ export function Window({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) {
+      if (e.key === "Escape" && open) {
         onClose();
       }
     };
     if (open) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [open, onClose]);
 
@@ -461,8 +482,8 @@ export function Window({
 
   useEffect(() => {
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [handleMouseMove, handleMouseUp]);
 
@@ -472,12 +493,12 @@ export function Window({
   const isConstrained = isMaximized || !!isTiled;
 
   const windowStyle: React.CSSProperties = isMaximized
-    ? { left: 0, top: 0, width: '100%', height: '100%', zIndex }
+    ? { left: 0, top: 0, width: "100%", height: "100%", zIndex }
     : {
         left: position.x,
         top: position.y,
         width: size.width,
-        height: isAutoHeight ? 'auto' : size.height,
+        height: isAutoHeight ? "auto" : size.height,
         zIndex,
       };
 
@@ -489,7 +510,7 @@ export function Window({
       <div
         ref={windowRef}
         className={`fixed flex flex-col border border-edge bg-elevated shadow-2xl rounded-lg overflow-hidden ${
-          isConstrained ? '' : 'resize-none'
+          isConstrained ? "" : "resize-none"
         }`}
         style={windowStyle}
         onClick={handleFocus}
@@ -498,7 +519,7 @@ export function Window({
         {/* Title bar */}
         <div
           className={`flex items-center gap-2 h-9 px-3 bg-surface-2 border-b border-edge select-none shrink-0 ${
-            isConstrained || isAutoHeight ? '' : 'cursor-move'
+            isConstrained || isAutoHeight ? "" : "cursor-move"
           }`}
           onMouseDown={handleTitleMouseDown}
           onDoubleClick={handleMaximize}
@@ -519,7 +540,7 @@ export function Window({
               <button
                 onClick={handleMaximize}
                 className="flex items-center justify-center w-6 h-6 text-fg-3 hover:text-fg hover:bg-surface-3 rounded"
-                title={isMaximized || isTiled ? 'Restore' : 'Maximize'}
+                title={isMaximized || isTiled ? "Restore" : "Maximize"}
               >
                 <CornersOutIcon size={12} weight="bold" />
               </button>
@@ -540,14 +561,38 @@ export function Window({
         {/* Resize handles */}
         {resizable && !isConstrained && (
           <>
-            <div className="absolute top-0 left-2 right-2 h-1 cursor-n-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'n')} />
-            <div className="absolute bottom-0 left-2 right-2 h-1 cursor-s-resize" onMouseDown={(e) => handleResizeMouseDown(e, 's')} />
-            <div className="absolute left-0 top-2 bottom-2 w-1 cursor-w-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'w')} />
-            <div className="absolute right-0 top-2 bottom-2 w-1 cursor-e-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'e')} />
-            <div className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'nw')} />
-            <div className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'ne')} />
-            <div className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'sw')} />
-            <div className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize" onMouseDown={(e) => handleResizeMouseDown(e, 'se')} />
+            <div
+              className="absolute top-0 left-2 right-2 h-1 cursor-n-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "n")}
+            />
+            <div
+              className="absolute bottom-0 left-2 right-2 h-1 cursor-s-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "s")}
+            />
+            <div
+              className="absolute left-0 top-2 bottom-2 w-1 cursor-w-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "w")}
+            />
+            <div
+              className="absolute right-0 top-2 bottom-2 w-1 cursor-e-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "e")}
+            />
+            <div
+              className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "nw")}
+            />
+            <div
+              className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "ne")}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "sw")}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize"
+              onMouseDown={(e) => handleResizeMouseDown(e, "se")}
+            />
           </>
         )}
       </div>
@@ -571,10 +616,10 @@ export function Dialog({ open, onClose, title, icon, children, width = 480 }: Di
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
   if (!open) return null;
