@@ -1,0 +1,41 @@
+# Tint2 config — minimal taskbar for AI agent desktop
+# Helps the AI model identify which windows are open via screenshots
+
+# Panel
+panel_items = T
+panel_size = 100% 24
+panel_margin = 0 0
+panel_padding = 2 0 2
+panel_background_id = 1
+panel_position = bottom center horizontal
+panel_layer = top
+panel_monitor = all
+autohide = 0
+font_shadow = 0
+
+# Background (dark, semi-transparent)
+rounded = 0
+border_width = 0
+background_color = #1a1a2e 90
+border_color = #333355 50
+
+# Taskbar
+taskbar_mode = single_desktop
+taskbar_padding = 2 2 2
+taskbar_background_id = 0
+
+# Task buttons
+task_text = 1
+task_icon = 1
+task_centered = 0
+task_maximum_size = 200 24
+task_padding = 4 2 4
+task_font = sans 9
+task_font_color = #e0e0ff 100
+task_active_font_color = #ffffff 100
+task_active_background_id = 2
+
+# Active task background
+rounded = 3
+border_width = 0
+background_color = #3a3a5e 80

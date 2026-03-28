@@ -1,30 +1,94 @@
 # MonokerOS Docker Compose Stack
-# Runs: NestJS API, Next.js Web, OpenClaw Gateway
+# Runs: Self-hosted Convex backend + Container Service + Next.js Web
+# Agent containers are spawned dynamically by the Container Service via Docker API.
 #
 # Usage:
-#   cp apps/api/.env.example .env   # then fill in your keys
 #   docker compose up -d
+#
+# Required env vars (set in .env or shell):
+#   CONVEX_SELF_HOSTED_ADMIN_KEY — admin key for the self-hosted Convex backend
+#   CONTAINER_SERVICE_SECRET     — shared secret between Convex actions and container service
+#   LLM_API_KEY                  — LLM provider API key
+#
+# The Container Service manages per-agent desktop containers at runtime.
+# It needs access to the Docker socket to spawn/stop agent containers.
 
 services:
-  # ── NestJS API (port 3001) ──────────────────────────────────────────
-  api:
+  # ── Self-hosted Convex Backend (port 3210 + 3211) ──────────────────
+  # Persistent real-time database — replaces the old NestJS + MockStore.
+  # Dashboard available at http://localhost:6791
+  convex-backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${CONVEX_PORT:-3210}:3210"
+      - "${CONVEX_SITE_PORT:-3211}:3211"
+    volumes:
+      - convex-data:/convex/data
+    environment:
+      CONVEX_CLOUD_ORIGIN: ${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:3210}
+      CONVEX_SITE_ORIGIN: ${CONVEX_SITE_ORIGIN:-http://127.0.0.1:3211}
+      RUST_LOG: ${RUST_LOG:-info}
+    healthcheck:
+      test: curl -f http://localhost:3210/version
+      interval: 5s
+      start_period: 10s
+    networks:
+      - monokeros
+    restart: unless-stopped
+
+  # ── Convex Dashboard (port 6791) ───────────────────────────────────
+  convex-dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${CONVEX_DASHBOARD_PORT:-6791}:6791"
+    environment:
+      NEXT_PUBLIC_DEPLOYMENT_URL: ${NEXT_PUBLIC_DEPLOYMENT_URL:-http://127.0.0.1:3210}
+    depends_on:
+      convex-backend:
+        condition: service_healthy
+    networks:
+      - monokeros
+    restart: unless-stopped
+
+  # ── Bun Container Service (port 3002) ──────────────────────────────
+  # Handles Docker lifecycle and SSE stream proxying.
+  # Called by Convex actions, NOT directly by the browser.
+  container-service:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: docker/container-service/Dockerfile
     ports:
-      - "${API_PORT:-3001}:3001"
+      - "${CONTAINER_SERVICE_PORT:-3002}:3002"
     environment:
-      - NODE_ENV=production
-      - OPENCLAW_GATEWAY_URL=http://openclaw:18789
-      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - ZAI_API_KEY=${ZAI_API_KEY}
-      - ZAI_BASE_URL=${ZAI_BASE_URL}
-      - ZAI_MODEL=${ZAI_MODEL}
+      PORT: 3002
+      CONTAINER_SERVICE_SECRET: ${CONTAINER_SERVICE_SECRET}
+      # Docker agent management
+      AGENT_DOCKER_IMAGE: ${AGENT_DOCKER_IMAGE:-monokeros/openclaw:latest}
+      AGENT_DOCKER_NETWORK: monokeros
+      DOCKER_HOST: ${DOCKER_HOST:-unix:///var/run/docker.sock}
+      DATA_DIR: /data
+      # LLM provider defaults (can be overridden per-agent)
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_MODEL: ${LLM_MODEL}
+      LLM_TYPE: ${LLM_TYPE:-openai_compat}
+      # TEI embeddings service URL (for ZeroClaw semantic memory)
+      TEI_URL: ${TEI_URL:-http://tei:80}
+      # ZeroClaw image (lightweight headless runtime)
+      ZEROCLAW_IMAGE: ${ZEROCLAW_IMAGE:-monokeros/zeroclaw:latest}
     volumes:
+      # Docker socket for spawning agent containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Agent workspace files (shared with agent containers)
       - agent-data:/data
-    depends_on:
-      openclaw:
-        condition: service_healthy
+      # MCP package source (mounted into agent containers)
+      - ./packages/mcp:/opt/monokeros/mcp:ro
+    networks:
+      - monokeros
     restart: unless-stopped
 
   # ── Next.js Web (port 3000) ─────────────────────────────────────────
@@ -35,51 +99,64 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      NEXT_PUBLIC_CONVEX_URL: ${NEXT_PUBLIC_CONVEX_URL:-http://127.0.0.1:3210}
+      CONTAINER_SERVICE_URL: http://container-service:3002
+      CONTAINER_SERVICE_SECRET: ${CONTAINER_SERVICE_SECRET}
     depends_on:
-      - api
+      - convex-backend
+      - container-service
+    networks:
+      - monokeros
     restart: unless-stopped
 
-  # ── OpenClaw Gateway (port 18789) ───────────────────────────────────
-  openclaw:
-    build:
-      context: .
-      dockerfile: docker/openclaw/Dockerfile
-    environment:
-      HOME: /home/node
-      TERM: xterm-256color
-      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
-      # AI provider credentials (passed through to agents)
-      ZAI_API_KEY: ${ZAI_API_KEY}
-      ZAI_BASE_URL: ${ZAI_BASE_URL}
-      ZAI_MODEL: ${ZAI_MODEL}
-      # MonokerOS API for MCP tools
-      MONOKEROS_API_URL: http://api:3001
-      MK_API_KEY: ${MK_API_KEY:-mk_dev_system}
-      MK_WORKSPACE: ${MK_WORKSPACE:-default}
-    volumes:
-      # OpenClaw config and state
-      - openclaw-config:/home/node/.openclaw
-      # Shared agent workspace data
-      - agent-data:/data
-      # Shared Chromium cache (saves ~250MB per container)
-      - chromium-cache:/home/node/.cache/chromium
+  # ── TEI Embeddings Service ─────────────────────────────────────────
+  # Shared text embedding inference for ZeroClaw semantic memory.
+  # First start downloads the model (~300MB), subsequent starts are fast.
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+    command:
+      - --model-id=${TEI_MODEL:-onnx-community/embeddinggemma-300m-ONNX}
+      - --pooling=mean
     ports:
-      - "${OPENCLAW_PORT:-18789}:18789"
+      - "${TEI_PORT:-8081}:80"
+    volumes:
+      - tei-cache:/data
+    networks:
+      - monokeros
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:18789/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test: ["CMD", "curl", "-sf", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     restart: unless-stopped
+
+# Agent containers are NOT defined here — they are spawned dynamically
+# by the Container Service using the Docker API. Each agent gets:
+#   - OpenClaw agents: container with optional desktop (OpenBox + Xvnc + Chrome + OpenClaw)
+#   - ZeroClaw agents: container with optional desktop (LLM + memory + MCP)
+#   - Access to the monokeros network for API communication
+#   - A bind mount to its agent data directory
+#   - Desktop agents: a unique websockify port for desktop viewing via RFB
 
 volumes:
+  # Self-hosted Convex data persistence
+  convex-data:
+    driver: local
   # Agent workspace files (SOUL.md, AGENTS.md, etc.)
+  # Mounted into both the Container Service and individual agent containers
+  # Chrome cache is per-agent under agent-data/{agentId}/chrome-cache/
   agent-data:
     driver: local
-  # OpenClaw gateway config and session state
-  openclaw-config:
+  # TEI model cache (persists downloaded embedding models)
+  tei-cache:
     driver: local
-  # Shared Chromium installation (~250MB saved per agent)
-  chromium-cache:
-    driver: local
+
+networks:
+  monokeros:
+    driver: bridge
+    name: monokeros
