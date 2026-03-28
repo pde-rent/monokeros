@@ -142,9 +142,9 @@ The org chart toolbar provides standard canvas controls:
 
 ```mermaid
 flowchart LR
-    A[Members API] --> B[Org Chart Component]
-    C[Teams API] --> B
-    D[Projects API] --> B
+    A[members.list] --> B[Org Chart Component]
+    C[teams.list] --> B
+    D[projects.list] --> B
     B --> E{View Mode}
     E -- hierarchy --> F[Tree Layout]
     E -- department --> G[Group Layout]
@@ -154,11 +154,10 @@ flowchart LR
     F & G & H & I & J --> K[React Flow Canvas]
 ```
 
-The org chart fetches data from the Members, Teams, and Projects REST API endpoints, then computes the appropriate layout based on the selected view mode. The layout engine positions nodes and edges, which React Flow renders on an HTML5 canvas.
+The org chart subscribes to Members, Teams, and Projects via Convex real-time queries (`members.list`, `teams.list`, `projects.list`), then computes the appropriate layout based on the selected view mode. The layout engine positions nodes and edges, which React Flow renders on an HTML5 canvas. Changes to member status, team assignments, or project allocations are reflected instantly through Convex's reactive subscriptions.
 
 ## Related Documentation
 
 - [Agents](../core-concepts/agents.md) -- Agent properties and lifecycle
 - [Teams](../core-concepts/teams.md) -- Team structure and membership
-- [REST API](../technical/api.md) -- Data endpoints used by the org chart
-- [WebSocket Protocol](../technical/websocket.md) -- Real-time status updates via `member:status-changed`
+- [MCP Server](../technical/mcp.md) -- Member, team, and project tools

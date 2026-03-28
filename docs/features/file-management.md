@@ -84,25 +84,34 @@ Tabular layout showing file name, type, size, and last modified date in a dense 
 
 ## File Operations
 
-| Operation | Method | API Endpoint |
-|-----------|--------|-------------|
-| **List drives** | GET | `/files/drives` |
-| **Read file** | GET | `/files/:category/:ownerId/file?path=...` |
-| **Create file** | POST | `/files/:category/:ownerId/file` |
-| **Update content** | PATCH | `/files/:category/:ownerId/content?path=...` |
-| **Rename** | PATCH | `/files/:category/:ownerId/rename?path=...` |
-| **Create folder** | POST | `/files/:category/:ownerId/folder` |
-| **Delete** | DELETE | `/files/:category/:ownerId/item?path=...` |
+| Operation | Convex Function | Description |
+|-----------|----------------|-------------|
+| **List drives** | `files.drives` | Lists all drives in the workspace |
+| **Read file** | `files.getContent` | Read a file's content by ID |
+| **Create file** | `files.createFile` | Create a new file in a drive |
+| **Update content** | `files.updateContent` | Update an existing file's content |
+| **Rename** | `files.renameItem` | Rename a file or folder |
+| **Create folder** | `files.createFolder` | Create a new folder in a drive |
+| **Delete** | `files.deleteItem` | Delete a file or folder |
+| **Upload binary** | `files.generateUploadUrl` | Get an upload URL for binary files |
 
-All endpoints are workspace-scoped under `/api/workspaces/:slug/files/...`. See the [REST API reference](../technical/api.md) for full details.
+Drive queries (`files.memberDrive`, `files.teamDrive`, `files.projectDrive`, `files.workspaceDrive`) are Convex real-time subscriptions, meaning the file tree updates automatically when files change.
 
 ### Example: Creating a File
 
-```bash
-curl -X POST http://localhost:3001/api/workspaces/:slug/files/members/:memberId/file?dir=/ \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "notes", "extension": "md", "content": "# My Notes\n\nFirst entry."}'
+```typescript
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+
+const createFile = useMutation(api.files.createFile);
+await createFile({
+  driveType: "member",
+  ownerId: memberId,
+  dir: "/",
+  name: "notes",
+  extension: "md",
+  content: "# My Notes\n\nFirst entry.",
+});
 ```
 
 ## File Preview
@@ -117,7 +126,7 @@ The file browser includes an integrated preview panel that renders files based o
 | `.tsv` | HTML table (tab-delimited) with header row |
 | `.html`, `.htm` | Sanitized HTML preview |
 
-The preview is powered by the [rendering pipeline](../technical/rendering.md), which runs server-side with the result cached by the `RenderService`.
+The preview is powered by the [rendering pipeline](../technical/rendering.md), which runs client-side using the `@monokeros/renderer` shared package.
 
 ```mermaid
 flowchart LR
@@ -146,7 +155,7 @@ Each agent member drive is initialized with system files that define the agent's
 
 The `KNOWLEDGE/` directory is also protected and contains domain knowledge documents that agents can reference.
 
-These files are read by the [OpenClaw service](../technical/daemon.md) to construct the agent's system prompt.
+These files are read by the OpenClaw runtime inside each agent container to construct the agent's system prompt.
 
 ## Context Menu
 
@@ -180,7 +189,6 @@ Files can be linked directly via the `?fileId=` query parameter in the URL. Open
 ## Related Documentation
 
 - [Rendering Pipeline](../technical/rendering.md) -- How file content is rendered
-- [REST API](../technical/api.md) -- File operation endpoints
 - [MCP Server](../technical/mcp.md) -- File tools available to MCP clients
 - [Agents](../core-concepts/agents.md) -- Agent identity files
 - [Drives](../core-concepts/drives.md) -- Drive ownership and structure

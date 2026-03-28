@@ -1,10 +1,10 @@
 # Workspaces
 
-A **workspace** is the top-level organizational boundary in MonokerOS. It is the equivalent of a Kubernetes namespace, a Discord server, a Slack workspace, or a Jira organization. Everything -- agents, teams, projects, tasks, drives, conversations -- lives inside a workspace, and workspaces are fully isolated from one another.
+A **workspace** is the top-level organizational boundary in MonokerOS. Everything -- agents, teams, projects, tasks, files, conversations -- lives inside a workspace, and workspaces are fully isolated from one another. Workspace configuration is stored in Convex and drives the behavior of the entire platform for that organization.
 
 ---
 
-## Workspace as a Container
+## Workspace Structure
 
 ```mermaid
 graph TB
@@ -12,13 +12,14 @@ graph TB
         direction TB
 
         subgraph Config["Configuration"]
-            Branding["Branding<br/>(color, logo)"]
+            Branding["Branding\n(color, logo)"]
             Industry["Industry Preset"]
             Providers["AI Providers"]
+            TaskTypes["Task Types"]
         end
 
         subgraph Entities["Core Entities"]
-            Agents["Agents<br/>(AI members)"]
+            Agents["Agents\n(AI members)"]
             Teams["Teams"]
             Projects["Projects"]
             Tasks["Tasks"]
@@ -44,32 +45,34 @@ graph TB
             Viewers["Viewers"]
         end
     end
-
 ```
 
 Every resource belongs to exactly one workspace. There is no cross-workspace resource sharing -- each workspace is a self-contained operating environment for its AI workforce.
 
 ---
 
-## Workspace Properties
+## Workspace Schema
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | `string` | Unique identifier (UUID) |
+Workspace records are stored in the Convex `workspaces` table with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
 | `name` | `string` | Internal machine-readable name |
 | `displayName` | `string` | Human-readable name shown in the UI (max 100 chars) |
 | `slug` | `string` | URL-safe identifier used in routing |
 | `industry` | `WorkspaceIndustry` | Industry classification driving default configuration |
-| `industrySubtype` | `string \| null` | Further specialization within the industry |
-| `status` | `WorkspaceStatus` | Current lifecycle state: `active`, `paused`, or `archived` |
-| `branding` | `WorkspaceBranding` | Visual identity: accent `color` (hex) and optional `logo` URL |
+| `industrySubtype` | `string` | Further specialization within the industry |
+| `status` | `WorkspaceStatus` | Lifecycle state: `active`, `paused`, or `archived` |
+| `branding` | `object` | Visual identity: accent `color` (hex) and optional `logo` URL |
 | `taskTypes` | `TaskTypeDefinition[]` | Available task categories (e.g., Feature, Bug, Design) |
 | `providers` | `ProviderConfig[]` | Configured AI model providers |
 | `defaultProviderId` | `AiProvider` | Which provider agents use by default |
-| `createdAt` | `string` | ISO 8601 creation timestamp |
-| `archivedAt` | `string \| null` | ISO 8601 archival timestamp, if archived |
+| `createdAt` | `number` | Creation timestamp |
+| `archivedAt` | `number` | Archival timestamp, if archived |
 
-### Workspace Status Lifecycle
+---
+
+## Workspace Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -81,9 +84,11 @@ stateDiagram-v2
     archived --> [*]
 ```
 
-- **Active** -- Normal operating state. Agents can be started, tasks processed, conversations active.
-- **Paused** -- All operations suspended. No agent daemons running. Data preserved.
-- **Archived** -- Read-only. Cannot be unarchived. Retained for audit purposes.
+| Status | Description |
+|--------|-------------|
+| **active** | Normal operating state. Agents can be started, tasks processed, conversations active. |
+| **paused** | All operations suspended. No agent containers running. Data preserved. |
+| **archived** | Read-only. Cannot be unarchived. Retained for audit purposes. |
 
 ---
 
@@ -95,7 +100,7 @@ Create a blank workspace by selecting the **Custom / Blank** industry. You confi
 
 ### From an Industry Preset
 
-Select a predefined industry to get pre-configured teams, project phases, and task type definitions. MonokerOS ships with 15 industry presets across multiple domains:
+Select a predefined industry to get pre-configured teams, project phases, and task type definitions. MonokerOS ships with 15 industry presets:
 
 | Category | Industries |
 |----------|-----------|
@@ -119,46 +124,13 @@ Each industry preset provides:
 - **Task types** -- Industry-specific task categories (e.g., `Feature`, `Bug`, `Refactor` for Software Development)
 - **Subtypes** -- Further specialization within the industry (e.g., Software Development subtypes: `web`, `mobile`, `ai_ml`, `gaming`)
 
-> **Note:** At launch, five industries are available: Software Development, Marketing & Communications, Creative & Design, Management Consulting, and Custom. Additional industries are deferred to post-launch releases.
-
 ### From Templates (Marketplace)
 
-Pre-built workspace templates include not only the industry configuration but also a fully staffed agent roster, pre-configured team assignments, and sample projects. Templates are the fastest way to see MonokerOS in action.
+Pre-built workspace templates include not only the industry configuration but also a fully staffed agent roster, pre-configured team assignments, and sample projects. Templates are the fastest way to see MonokerOS in action. Available templates include law firm, web development agency, mobile development agency, and article writing team.
 
 ---
 
-## Industry Presets in Depth
-
-Industry presets define the blueprint for a workspace. When you select an industry during workspace creation, MonokerOS auto-generates:
-
-```mermaid
-flowchart LR
-    A["Select Industry"] --> B["Generate Default Teams"]
-    A --> C["Generate Default Phases"]
-    A --> D["Generate Task Types"]
-    A --> E["Generate Subtypes"]
-
-    B --> F["Workspace Created"]
-    C --> F
-    D --> F
-    E --> F
-
-```
-
-**Example: Software Development preset**
-
-- **Teams**: Product Management, UI/UX Design, Development, Testing/QA, DevOps, SEO/Marketing, Research, Documentation
-- **Phases**: intake, discovery, prd-proposal, kickoff, design, development, testing, deployment, handoff
-- **Task Types**: Feature, Bug, DevOps, Design, Documentation, Research, Testing, Refactor
-- **Subtypes**: web, mobile, web3, ai_ml, gaming, embedded, desktop
-
-You can always customize these defaults after creation. The preset just gives you a strong starting point.
-
----
-
-## Workspace Configuration
-
-### AI Providers
+## AI Provider Configuration
 
 Each workspace configures one or more AI providers that its agents can use. A provider configuration includes:
 
@@ -170,60 +142,68 @@ Each workspace configures one or more AI providers that its agents can use. A pr
 | `defaultModel` | Model name used when agents do not specify their own |
 | `label` | Optional human-friendly name |
 
-MonokerOS supports **30+ AI providers** out of the box, including OpenAI, Anthropic, Google Gemini, DeepSeek, xAI, Mistral, OpenRouter, Ollama, Groq, and many more. Local inference backends (Ollama, vLLM, LM Studio, llama.cpp) are also supported for air-gapped deployments.
+MonokerOS supports **33+ AI providers** out of the box, including OpenAI, Anthropic, Google Gemini, DeepSeek, xAI, Mistral, OpenRouter, Ollama, Groq, and many more. Local inference backends (Ollama, vLLM, LM Studio, llama.cpp) are also supported for air-gapped deployments.
 
-The workspace sets a `defaultProvider` that agents inherit unless overridden. See [Agents -- Model Configuration](./agents.md#model-configuration) for the full resolution chain.
+The workspace sets a `defaultProviderId` that agents inherit unless overridden at the agent level. See [Agents -- Model Configuration](./agents.md#model-configuration) for the full provider resolution chain.
 
-### Branding
+---
+
+## Task Types
+
+Task types are customizable per workspace and define the categories of work available in projects. Each task type has:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Machine-readable identifier (e.g., `feature`, `bug`) |
+| `label` | Human-readable display name (e.g., "Feature", "Bug") |
+| `color` | Hex color code for UI display |
+
+Industry presets provide sensible defaults (e.g., Software Development gets Feature, Bug, DevOps, Design, Documentation, Research, Testing, Refactor), but these can be freely customized after workspace creation.
+
+---
+
+## Branding
 
 Workspaces support visual branding:
 
-- **Color** -- A hex color code (e.g., `#8b5cf6`) used throughout the UI as the workspace accent
-- **Logo** -- An optional logo URL displayed in the workspace header
-
-### Storage Limits
-
-Workspace manifests define storage constraints:
-
-- `maxDriveSizeMb` -- Maximum total drive storage per workspace (default: 500 MB)
-
-### Encryption
-
-Workspace manifests support encryption configuration:
-
-- `atRest` -- Encrypt stored data (default: `true`)
-- `inTransit` -- Encrypt data in transit (default: `true`)
+- **Color** -- A hex color code used throughout the UI as the workspace accent
+- **Logo** -- An optional logo image displayed in the workspace header
 
 ---
 
-## Workspace Members (Human Users)
+## Human Roles and Permissions
 
-Workspaces have human users alongside AI agents. Each human user is assigned a **role** that controls their permissions:
+Human users join workspaces through the `workspaceMembers` table, which associates a user with a workspace and a role. Each role defines a permission boundary:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| **Admin** | Full control over the workspace | All permissions including `workspace:admin` |
-| **Validator** | Can review and approve work, manage projects | Read/write on most resources, gate approvals |
-| **Viewer** | Read-only access | Read permissions on all resources |
+| **Admin** | Full control over the workspace | All permissions including `workspace:admin`, member management, provider configuration |
+| **Validator** | Can review and approve work, manage projects | Read and write on most resources, gate approvals, but no workspace-level admin |
+| **Viewer** | Read-only access to the workspace | Read permissions on all resources, no write access |
 
 ```mermaid
 graph LR
-    Admin["Admin<br/>Full control"]
-    Validator["Validator<br/>Review & approve"]
-    Viewer["Viewer<br/>Read-only"]
+    Admin["Admin\nFull control"]
+    Validator["Validator\nReview and approve"]
+    Viewer["Viewer\nRead-only"]
 
     Admin -->|"superset of"| Validator
     Validator -->|"superset of"| Viewer
-
 ```
 
-Human members interact with the workspace through the web UI. They can chat with agents, approve SDLC gates, manage projects, and oversee agent operations. Critically, humans interact primarily with **team leads** -- not with every individual agent. See [Teams](./teams.md) for more on communication hierarchy.
+Granular permission strings include `members:read`, `members:write`, `tasks:read`, `tasks:write`, `files:read`, `files:write`, `workspace:admin`, and more. The role determines which permissions a user receives.
 
 ---
 
-## Workspace Isolation
+## Workspace Scoping (Multi-Tenancy)
 
-Each workspace maintains strict isolation:
+Every Convex table has a `workspaceId` field that scopes records to their owning workspace. This is the foundational multi-tenancy mechanism:
+
+- All queries filter by `workspaceId`
+- Mutations verify `workspaceId` matches the authenticated user's workspace context
+- There is no way to access resources across workspace boundaries
+
+### Workspace Isolation
 
 ```mermaid
 graph TB
@@ -245,10 +225,9 @@ graph TB
     T1 -.- |"Cannot access"| T2
     P1 -.- |"Cannot access"| P2
 
-    linkStyle 0 stroke:#ef4444,stroke-dasharray:5 5
-    linkStyle 1 stroke:#ef4444,stroke-dasharray:5 5
-    linkStyle 2 stroke:#ef4444,stroke-dasharray:5 5
-
+    linkStyle 0 stroke-dasharray:5 5
+    linkStyle 1 stroke-dasharray:5 5
+    linkStyle 2 stroke-dasharray:5 5
 ```
 
 - Agents in Workspace A cannot see or communicate with agents in Workspace B
@@ -258,45 +237,25 @@ graph TB
 
 ---
 
-## Kubernetes-Style Manifests
+## Convex Schema Tables
 
-Workspaces can be defined declaratively using YAML manifests, following Kubernetes conventions:
+The following Convex tables are scoped to workspaces:
 
-```yaml
-apiVersion: v1
-kind: Workspace
-metadata:
-  name: acme-web-agency
-  labels:
-    environment: production
-spec:
-  displayName: "Acme Web Agency"
-  description: "Full-stack web development agency"
-  industry: software_development
-  industrySubtype: web
-  branding:
-    color: "#8b5cf6"
-  providers:
-    - provider: anthropic
-      baseUrl: https://api.anthropic.com/v1
-      apiKeyEnv: ANTHROPIC_API_KEY
-      defaultModel: claude-sonnet-4-5-20250929
-  defaultProvider: anthropic
-  defaults:
-    phases:
-      - intake
-      - discovery
-      - design
-      - development
-      - testing
-      - deployment
-    taskTypes:
-      - { name: feature, label: Feature, color: "#10b981" }
-      - { name: bug, label: Bug, color: "#ef4444" }
-      - { name: refactor, label: Refactor, color: "#8b5cf6" }
-```
-
-Manifests use lowercase kebab-case names, optional labels and annotations, and a `spec` block containing the configuration. This mirrors the Kubernetes resource model.
+| Table | Description |
+|-------|-------------|
+| `workspaces` | Workspace configuration and metadata |
+| `workspaceMembers` | Human user memberships and roles |
+| `members` | Agents and human member records |
+| `teams` | Team definitions and composition |
+| `projects` | Project definitions, phases, and gates |
+| `tasks` | Individual work items |
+| `conversations` | Chat conversations |
+| `messages` | Chat messages |
+| `files` | File metadata and storage references |
+| `notifications` | User notifications |
+| `apiKeys` | Programmatic access keys |
+| `agentRuntimes` | Agent container state tracking |
+| `activities` | Activity log / audit trail |
 
 ---
 

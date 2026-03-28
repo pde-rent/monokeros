@@ -1,234 +1,284 @@
 # Self-Hosting
 
-This guide covers configuring and deploying MonokerOS outside of a local development setup. MonokerOS is currently in **pre-release** -- some sections describe planned infrastructure that is not yet implemented. These are marked accordingly.
+MonokerOS is designed to run entirely on your own infrastructure via Docker Compose. This guide covers the full deployment architecture, configuration reference, security hardening, and operational procedures.
 
 ---
 
-## Current State
+## Architecture Overview
 
-MonokerOS currently runs as a development/preview platform with:
-
-- **In-memory mock store** -- all data lives in process memory and is lost on restart.
-- **Seed data** -- the Design Unlimited v2 workspace is auto-loaded on every API server boot.
-- **Single-user dev auth** -- any email + the password `password` grants access.
-- **Bun runtime** -- the API server runs on Bun.
+The MonokerOS stack consists of four Docker Compose services plus dynamically spawned agent containers.
 
 ```mermaid
 graph TB
-    subgraph Current["Current Architecture"]
-        Browser[Browser<br/>localhost:3000]
-        Web[Next.js Web App<br/>Port 3000]
-        API[NestJS API<br/>Port 3001]
-        WS[WebSocket<br/>Port 3001]
-        Mock[(Mock Store<br/>In-Memory)]
-        OCS[OpenClaw Service<br/>Agent Runtime]
-        LLM[AI Provider API]
-
-        Browser --> Web
-        Web --> API
-        Browser --> WS
-        API --> Mock
-        API --> OCS
-        OCS --> LLM
+    subgraph Compose["docker-compose.yml (Control Plane)"]
+        Web["Web<br/>Next.js 15<br/>Port 3000"]
+        Convex["Convex Backend<br/>Port 3210 / 3211"]
+        Dashboard["Convex Dashboard<br/>Port 6791"]
+        CS["Container Service<br/>Port 3002"]
     end
+
+    subgraph Dynamic["Dynamic Agent Containers"]
+        A1["Agent Desktop 1<br/>noVNC Port: dynamic"]
+        A2["Agent Desktop 2<br/>noVNC Port: dynamic"]
+        AN["Agent Desktop N<br/>noVNC Port: dynamic"]
+    end
+
+    Docker["Docker Engine"]
+    LLM["LLM Provider"]
+
+    Web -->|Queries & Mutations| Convex
+    Web -->|Agent lifecycle| CS
+    Dashboard -->|Admin UI| Convex
+    CS -->|Docker API| Docker
+    Docker --- A1 & A2 & AN
+    A1 & A2 & AN -->|Chat completions| LLM
 ```
 
-For a deeper look, see [System Overview](../architecture/overview.md) and [OpenClaw Service](../technical/daemon.md).
+**Key design decision:** Agent containers are NOT defined in `docker-compose.yml`. They are spawned dynamically by the Container Service using the Podman/Docker API. This allows the platform to scale agents up and down on demand.
 
 ---
 
-## Environment Variables Reference
+## Services Reference
 
-All environment variables are configured in `apps/api/.env`. Copy from `apps/api/.env.example` as a starting point.
+### convex-backend (Port 3210 / 3211)
 
-### Core Variables
+The self-hosted Convex backend is the real-time database and function runtime. It replaces traditional REST APIs with reactive queries, mutations, and actions.
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ZAI_API_KEY` | Yes | -- | API key for the AI provider. |
-| `ZAI_BASE_URL` | Yes | `https://api.z.ai/api/coding/paas/v4` | Base URL for the provider's OpenAI-compatible endpoint. |
-| `ZAI_MODEL` | Yes | `glm-5` | Model identifier sent in chat completion requests. |
+| Property | Value |
+|----------|-------|
+| Image | `ghcr.io/get-convex/convex-backend:latest` |
+| Ports | `3210` (API), `3211` (site) |
+| Volume | `convex-data` (persistent database) |
+| Health check | `curl -f http://localhost:3210/version` |
+| Restart policy | `unless-stopped` |
 
-### Authentication
+### convex-dashboard (Port 6791)
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `JWT_SECRET` | Recommended | Hard-coded dev fallback | Secret key for signing JWT tokens. **Must be set in any non-local deployment.** |
+Admin dashboard for inspecting data, running queries, viewing function logs, and managing the Convex deployment.
 
-### Agent Runtime (Optional)
+| Property | Value |
+|----------|-------|
+| Image | `ghcr.io/get-convex/convex-dashboard:latest` |
+| Port | `6791` |
+| Depends on | `convex-backend` (healthy) |
+| Restart policy | `unless-stopped` |
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPENCLAW_GATEWAY_URL` | No | `http://127.0.0.1:18789` | URL of the OpenClaw gateway (Docker container or local). |
-| `ZEROCLAW_DATA_DIR` | No | `./data/agents` | Directory for agent runtime data. |
+### container-service (Port 3002)
 
----
+A Bun HTTP server that manages container lifecycles for agents (Podman or Docker). Called by Convex actions (not directly by the browser).
 
-## Authentication Configuration
+| Property | Value |
+|----------|-------|
+| Build | `docker/container-service/Dockerfile` |
+| Port | `3002` |
+| Container socket | Mounted at `/var/run/docker.sock` (auto-detects Podman or Docker) |
+| Volumes | `agent-data:/data`, `./packages/mcp:/opt/monokeros/mcp:ro` |
+| Restart policy | `unless-stopped` |
 
-### JWT Tokens
+### web (Port 3000)
 
-MonokerOS uses JWT for session authentication. In development, a fallback secret is used automatically. For any exposed deployment, set a strong `JWT_SECRET`:
+The Next.js 15 web application with TurboPack. Serves the entire MonokerOS UI.
 
-```dotenv
-JWT_SECRET=your-256-bit-secret-here
-```
-
-Tokens are issued at login and must be included in subsequent API requests as a Bearer token:
-
-```
-Authorization: Bearer <token>
-```
-
-### API Keys
-
-For programmatic access (scripts, CI/CD, external integrations), MonokerOS supports API keys with the `mk_` prefix. These bypass the JWT flow and authenticate directly against the API.
-
-### Future: OAuth2 (Planned)
-
-Support for third-party identity providers is planned:
-
-| Provider | Status |
-|----------|--------|
-| Google OAuth2 | Planned |
-| GitHub OAuth | Planned |
-| Microsoft Entra ID | Planned |
-
-These will integrate as additional authentication strategies alongside JWT.
+| Property | Value |
+|----------|-------|
+| Build | `docker/web/Dockerfile` |
+| Port | `3000` |
+| Depends on | `convex-backend`, `container-service` |
+| Restart policy | `unless-stopped` |
 
 ---
 
-## AI Provider Configuration
+## Environment Variables
 
-MonokerOS connects to LLM providers through an OpenAI-compatible chat completions interface. The three `ZAI_*` variables control which provider, model, and credentials are used.
+### Required Variables
 
-### Provider Resolution Chain
+These must be set in a `.env` file at the project root (or passed to Docker Compose via the shell).
 
-The API resolves provider settings per agent using a fallback chain:
+| Variable | Service(s) | Description |
+|----------|-----------|-------------|
+| `CONVEX_SELF_HOSTED_ADMIN_KEY` | convex-backend | Admin key for the Convex backend. Generate: `openssl rand -hex 32` |
+| `CONTAINER_SERVICE_SECRET` | container-service, web | Shared Bearer token between Convex actions and Container Service. Generate: `openssl rand -hex 32` |
+| `LLM_API_KEY` | container-service | API key for the LLM provider. Passed to agent containers at runtime. |
+
+### Optional Variables
+
+| Variable | Service(s) | Default | Description |
+|----------|-----------|---------|-------------|
+| `LLM_BASE_URL` | container-service | `https://api.openai.com/v1` | LLM provider base URL. Can be overridden per-workspace in Convex. |
+| `LLM_MODEL` | container-service | `gpt-4o` | Default model identifier. Can be overridden per-workspace. |
+| `NEXT_PUBLIC_CONVEX_URL` | web | `http://127.0.0.1:3210` | URL where the browser reaches Convex. Must be publicly accessible in production. |
+| `CONVEX_CLOUD_ORIGIN` | convex-backend | `http://127.0.0.1:3210` | Origin URL the Convex backend uses for itself. |
+| `CONVEX_SITE_ORIGIN` | convex-backend | `http://127.0.0.1:3211` | Site origin URL for Convex. |
+| `NEXT_PUBLIC_DEPLOYMENT_URL` | convex-dashboard | `http://127.0.0.1:3210` | Convex backend URL for the dashboard. |
+| `RUST_LOG` | convex-backend | `info` | Log level for the Convex backend. |
+| `TELEGRAM_BOT_TOKEN` | container-service | -- | Telegram bot token for agent channel integration. |
+
+### Port Override Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONVEX_PORT` | `3210` | Convex backend API port. |
+| `CONVEX_SITE_PORT` | `3211` | Convex site port. |
+| `CONVEX_DASHBOARD_PORT` | `6791` | Convex dashboard port. |
+| `CONTAINER_SERVICE_PORT` | `3002` | Container Service port. |
+| `WEB_PORT` | `3000` | Web app port. |
+
+### Container Service Agent Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_IMAGE` | `monokeros/openclaw-desktop:latest` | Container image for agent desktops. Legacy name `AGENT_DOCKER_IMAGE` also works. |
+| `AGENT_DOCKER_NETWORK` | `monokeros` | Bridge network for agent containers. |
+| `CONTAINER_SOCKET` | _(auto-detected)_ | Container engine socket URL. Legacy name `DOCKER_HOST` also works. Auto-detection probes Podman sockets first, then Docker. |
+| `CONTAINER_RUNTIME` | _(auto-detected)_ | Force `podman` or `docker`. Skips auto-detection. |
+| `DATA_DIR` | `/data` | Agent data directory inside the Container Service. |
+
+---
+
+## Agent Container Specifications
+
+Each agent container is spawned with the following resource limits and configuration:
+
+### Resource Limits
+
+| Resource | Limit |
+|----------|-------|
+| Memory | 512 MB |
+| CPU | 1 core |
+| Shared memory (`/dev/shm`) | 256 MB |
+| tmpfs (`/tmp`) | 100 MB |
+
+### Container Contents
+
+Each agent container is built from the `monokeros/openclaw-desktop` image, which includes:
+
+- **Ubuntu 24.04** base image
+- **OpenBox** window manager
+- **Xvnc** virtual display server
+- **noVNC** for browser-based VNC access (unique port per agent)
+- **Chrome** browser
+- **OpenClaw** agent runtime
+- **Bun** runtime for MCP tools
+
+### Security
+
+- Containers run as a **non-root user**
+- `--security-opt=no-new-privileges` is applied
+- Each container is isolated on the `monokeros` bridge network
+- File system access is limited to the agent's own data directory
+
+---
+
+## Volumes
+
+| Volume | Mount Points | Description |
+|--------|-------------|-------------|
+| `convex-data` | convex-backend: `/convex/data` | Persistent Convex database storage. **Back up this volume.** |
+| `agent-data` | container-service: `/data`, agent containers: `/data/<agent-id>` | Workspace files for agents (SOUL.md, AGENTS.md, etc.). Shared between the Container Service and individual agent containers. |
+| `chromium-cache` | agent containers: shared mount | Shared Chromium cache (~250MB) across all agent containers to reduce disk usage and startup time. |
+
+---
+
+## Network
+
+All services communicate on the `monokeros` bridge network.
 
 ```mermaid
-flowchart TD
-    A["Agent modelConfig.apiKeyOverride"] -->|"if set"| Use1[Use agent-level key]
-    A -->|"fallback"| B["Workspace provider.apiKey"]
-    B -->|"if set"| Use2[Use workspace-level key]
-    B -->|"fallback"| C["process.env.ZAI_API_KEY"]
-    C -->|"if set"| Use3[Use env-level key]
-    C -->|"fallback"| D["Empty string (will fail)"]
+graph LR
+    subgraph Network["monokeros (bridge)"]
+        W["web :3000"]
+        C["convex-backend :3210"]
+        D["convex-dashboard :6791"]
+        CS["container-service :3002"]
+        A1["agent-1 :noVNC"]
+        A2["agent-2 :noVNC"]
+    end
 
-    E["Workspace provider.baseUrl"] -->|"if set"| Use4[Use workspace-level URL]
-    E -->|"fallback"| F["process.env.ZAI_BASE_URL"]
-    F -->|"if set"| Use5[Use env-level URL]
-    F -->|"fallback"| G["DEFAULT_ZAI_BASE_URL"]
+    W --> C
+    W --> CS
+    D --> C
+    CS -.->|spawns| A1 & A2
+    A1 & A2 --> C
 ```
 
-This allows you to:
-- Set a global default in `.env` for all agents.
-- Override at the workspace level for multi-provider setups.
-- Override at the individual agent level for specialized models.
-
-For a list of supported providers and their URLs, see the [Installation guide](./installation.md#ai-provider-setup).
+- The web app communicates with Convex for data and Container Service for agent lifecycle.
+- Agent containers communicate with Convex directly for tool calls via the MCP server.
+- The Container Service communicates with the container engine (Podman or Docker) via the mounted socket to spawn/stop agents.
 
 ---
 
-## Database
+## Provider Configuration
 
-### Current: Mock Store (In-Memory)
+LLM provider settings can be configured at multiple levels:
 
-The mock store is a development convenience. It provides:
-- Instant startup with zero configuration.
-- Auto-loaded seed data (Design Unlimited v2 workspace).
-- Full CRUD operations through the same API surface that will be used with a real database.
+1. **Environment variables** (`.env`) -- global defaults for `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`.
+2. **Workspace level** -- override provider settings per-workspace via the Convex data store.
+3. **Agent level** -- override per-agent for specialized models (e.g., a code agent using a different model than a writing agent).
 
-**Limitations:**
-- Data is lost on every API server restart.
-- No persistence, no migrations, no backups.
-- Single-process only (no horizontal scaling).
+The resolution chain is: agent override > workspace override > environment variable default.
 
-### Planned: Persistent Database
-
-When production database support is implemented, the target is:
-
-| Option | Use Case |
-|--------|----------|
-| **PostgreSQL** | Multi-user production deployments. |
-| **SQLite** | Single-user or small-team self-hosted deployments. |
-
-The API is designed with a repository abstraction layer, so swapping the mock store for a real database will not change the API surface.
+For a list of supported providers and their base URLs, see the [Installation guide](./installation.md#ai-provider-setup).
 
 ---
 
-## Running in Production (Planned)
+## Building the Agent Desktop Image
 
-> **Note:** Production deployment tooling is not yet available. The following is a conceptual architecture for when it is implemented.
+The agent desktop image must be built before agents can be started:
 
-### Docker Compose
+```bash
+# Podman (recommended)
+podman build -t monokeros/openclaw-desktop docker/openclaw-desktop/
 
-A planned Docker Compose setup would include:
-
-```yaml
-# Conceptual -- not yet implemented
-version: "3.9"
-
-services:
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - API_URL=http://api:3001
-    depends_on:
-      - api
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    ports:
-      - "3001:3001"
-    env_file:
-      - apps/api/.env
-    environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - ZAI_API_KEY=${ZAI_API_KEY}
-      - ZAI_BASE_URL=${ZAI_BASE_URL}
-      - ZAI_MODEL=${ZAI_MODEL}
-    # volumes:
-    #   - agent-data:/app/data/agents
-    #   - db-data:/app/data/db
-
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_DB: monokeros
-  #     POSTGRES_USER: monokeros
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
-  #   volumes:
-  #     - db-data:/var/lib/postgresql/data
+# Docker
+docker build -t monokeros/openclaw-desktop docker/openclaw-desktop/
 ```
 
-Both containers use the Bun runtime. The web app container would run `bunx next start`, and the API container would run `bun src/main.ts`.
+To use a custom image name, set the `AGENT_IMAGE` environment variable:
+
+```dotenv
+AGENT_IMAGE=your-registry/openclaw-desktop:v1.0
+```
+
+For production deployments, push the image to a container registry and reference it by digest for reproducibility:
+
+```bash
+podman build -t your-registry/openclaw-desktop:v1.0 docker/openclaw-desktop/
+podman push your-registry/openclaw-desktop:v1.0
+```
 
 ---
 
-## Reverse Proxy Setup
+## Deploying the Convex Schema
 
-When deploying behind a reverse proxy, you need to handle:
-- HTTP routing to both web (port 3000) and API (port 3001).
-- WebSocket upgrade for the API server (same port 3001).
-- TLS termination.
+After starting the stack for the first time (or after schema changes), push the Convex functions and schema:
+
+```bash
+bunx convex deploy \
+  --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY \
+  --url http://localhost:3210
+```
+
+Seed data is automatically loaded via `convex/seed.ts` on first deployment.
+
+---
+
+## Reverse Proxy Considerations
+
+When deploying behind a reverse proxy (nginx, Caddy, Traefik, etc.), you need to handle:
+
+- **Web app** on port 3000 -- standard HTTP proxy.
+- **Convex backend** on port 3210 -- must support HTTP upgrades for Convex's real-time protocol.
+- **noVNC ports** -- each agent container exposes a unique noVNC port for desktop streaming. These are dynamically assigned and must be accessible to the browser.
 
 ### Nginx Example
 
 ```nginx
-# Conceptual configuration
 upstream web {
     server 127.0.0.1:3000;
 }
 
-upstream api {
-    server 127.0.0.1:3001;
+upstream convex {
+    server 127.0.0.1:3210;
 }
 
 server {
@@ -246,19 +296,18 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+}
 
-    # API routes
-    location /api/ {
-        proxy_pass http://api;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+server {
+    listen 443 ssl;
+    server_name convex.monokeros.example.com;
 
-    # WebSocket (Socket.IO)
-    location /socket.io/ {
-        proxy_pass http://api;
+    ssl_certificate     /etc/ssl/certs/monokeros.pem;
+    ssl_certificate_key /etc/ssl/private/monokeros.key;
+
+    # Convex backend (supports HTTP upgrades)
+    location / {
+        proxy_pass http://convex;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -271,116 +320,137 @@ server {
 ### Caddy Example
 
 ```caddyfile
-# Conceptual configuration
 monokeros.example.com {
-    # API and WebSocket
-    handle /api/* {
-        reverse_proxy localhost:3001
-    }
-    handle /socket.io/* {
-        reverse_proxy localhost:3001
-    }
+    reverse_proxy localhost:3000
+}
 
-    # Web app (default)
-    handle {
-        reverse_proxy localhost:3000
-    }
+convex.monokeros.example.com {
+    reverse_proxy localhost:3210
 }
 ```
 
-Caddy automatically provisions TLS certificates via Let's Encrypt and handles WebSocket upgrades natively.
+Caddy automatically provisions TLS certificates via Let's Encrypt and handles protocol upgrades natively.
+
+> **Important:** Set `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_CLOUD_ORIGIN` to the publicly accessible Convex URL when deploying behind a reverse proxy.
 
 ---
 
-## Security Considerations
+## Monitoring
 
-### CORS
+### Convex Dashboard
 
-The API server is configured with CORS allowing `localhost:3000` by default. For production deployments, update the CORS origin to match your actual domain:
+The Convex dashboard at port 6791 provides:
 
-```typescript
-// In apps/api/src/main.ts or CORS config
-origin: 'https://monokeros.example.com'
-```
+- Data browser for all tables
+- Function logs with execution times
+- Real-time subscription inspector
+- Schema and index viewer
 
-### Rate Limiting
+### Container Service Health
 
-Rate limiting is not yet implemented in the API. For production deployments, apply rate limiting at the reverse proxy layer:
-
-- Nginx: `limit_req_zone` directive.
-- Caddy: `rate_limit` plugin.
-- Cloud: Use your provider's WAF or API gateway.
-
-### JWT Secret
-
-Never use the development fallback secret in a deployed environment. Generate a strong random secret:
+The Container Service exposes a health endpoint:
 
 ```bash
-openssl rand -base64 32
+curl http://localhost:3002/health
 ```
 
-Set it as `JWT_SECRET` in your environment.
+This returns the service status and can be used for external health monitoring or load balancer probes.
 
----
+### Docker Container Monitoring
 
-## Agent Lifecycle
+Monitor running agent containers:
 
-The OpenClaw service runs in-process within the NestJS API server. Agent lifecycle is managed through the service's `start()`, `stop()`, and `restart()` methods.
+```bash
+# List all agent containers
+docker ps --filter "label=monokeros.agent"
 
-On startup, the service:
-1. Provisions all agents (creates workspace directories and writes identity files).
-2. Writes gateway configuration (`openclaw.json`).
-3. Marks all agents as `RUNNING`.
-4. Checks gateway health (if configured).
+# View logs for a specific agent container
+docker logs <container-id>
 
-```mermaid
-stateDiagram-v2
-    [*] --> Provisioning: API server starts
-    Provisioning --> Running: Agents provisioned
-    Running --> Processing: Message received
-    Processing --> Streaming: AI provider responds (SSE)
-    Streaming --> Running: Response complete
-    Running --> [*]: API server stops
+# Inspect resource usage
+docker stats --filter "label=monokeros.agent"
 ```
-
-Since the OpenClaw service is in-process, there are no child processes to manage. Restarting the API server cleanly restarts the agent runtime.
 
 ---
 
 ## Backup Strategy
 
-### Current (Mock Store)
+### Convex Data
 
-No backup is needed or possible -- data exists only in memory and is regenerated from seed data on startup.
+The `convex-data` volume contains all persistent data (workspaces, agents, teams, projects, tasks, conversations, files, etc.). Back up this volume regularly:
 
-### Future (Persistent Database)
+```bash
+# Stop Convex to ensure consistency
+docker compose stop convex-backend
 
-When a real database is implemented, the backup strategy will depend on the chosen engine:
+# Back up the volume
+docker run --rm -v convex-data:/data -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/convex-data-$(date +%Y%m%d).tar.gz /data
 
-| Database | Backup Method |
-|----------|--------------|
-| PostgreSQL | `pg_dump` on a cron schedule, WAL archiving for point-in-time recovery. |
-| SQLite | File-system copy of the `.sqlite` file (ensure no active writes), or Litestream for continuous replication. |
+# Restart
+docker compose start convex-backend
+```
 
-Additional data to back up:
-- Agent runtime data (data directory, default `./data/agents`).
-- File drive contents (team and agent drives).
-- Environment configuration (`.env` file -- store securely, not in version control).
+### Agent Data
+
+The `agent-data` volume contains agent workspace files (SOUL.md, AGENTS.md, etc.). These are regenerated from Convex data when agents start, but backing up the volume preserves any runtime artifacts:
+
+```bash
+docker run --rm -v agent-data:/data -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/agent-data-$(date +%Y%m%d).tar.gz /data
+```
+
+### Environment Configuration
+
+Store your `.env` file securely. Never commit it to version control. Use a secrets manager (Vault, AWS Secrets Manager, etc.) for production deployments.
 
 ---
 
-## Summary
+## Upgrading
 
-| Aspect | Current State | Planned |
-|--------|--------------|---------|
-| Data store | In-memory mock | PostgreSQL / SQLite |
-| Auth | JWT with dev fallback | JWT + OAuth2 (Google, GitHub, Microsoft) |
-| Deployment | Local `bun run dev` | Docker Compose |
-| TLS | None (localhost) | Reverse proxy (nginx/Caddy) |
-| Scaling | Single process | Horizontal (API) + OpenClaw gateway |
-| Backups | N/A | pg_dump / Litestream |
+To upgrade MonokerOS to a new version:
 
-MonokerOS is under active development. Production deployment tooling, persistent storage, and multi-user auth will be added in upcoming releases. Check the [Roadmap](../roadmap/future.md) for planned milestones.
+```bash
+# Pull latest source
+git pull origin main
+
+# Install updated dependencies
+bun install
+
+# Pull latest Convex images
+docker compose pull convex-backend convex-dashboard
+
+# Rebuild Container Service and Web images
+docker compose build container-service web
+
+# Rebuild agent desktop image
+docker build -t monokeros/openclaw-desktop docker/openclaw-desktop/
+
+# Restart the stack
+docker compose up -d
+
+# Push updated Convex schema
+bunx convex deploy \
+  --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY \
+  --url http://localhost:3210
+```
+
+Running agent containers are not affected by the upgrade. They will use the new image on next restart.
+
+---
+
+## Security Checklist
+
+| Item | Recommendation |
+|------|---------------|
+| `CONVEX_SELF_HOSTED_ADMIN_KEY` | Generate a strong random key. Never expose publicly. |
+| `CONTAINER_SERVICE_SECRET` | Generate a strong random key. Used as Bearer token for all Container Service requests. |
+| `LLM_API_KEY` | Store securely. Rotated regularly. Never commit to version control. |
+| Agent containers | Run as non-root, `no-new-privileges`, resource-limited (512MB RAM, 1 CPU). |
+| Container socket | The Container Service requires access to the Podman or Docker socket. Podman's rootless mode reduces exposure. In production with Docker, consider using a Docker socket proxy with restricted permissions. |
+| Network isolation | All services on the `monokeros` bridge network. Agent containers cannot access the host network. |
+| TLS | Terminate TLS at the reverse proxy. All internal communication is over the Docker bridge network. |
+| Convex admin key | Only used for schema deployment. Not exposed to the web app or end users. |
 
 ---
 
@@ -388,7 +458,5 @@ MonokerOS is under active development. Production deployment tooling, persistent
 
 - [Installation](./installation.md) -- initial setup and provider configuration
 - [Quick Start](./quick-start.md) -- first steps with the platform
-- [System Overview](../architecture/overview.md) -- architecture deep dive
-- [OpenClaw Service](../technical/daemon.md) -- agent runtime architecture
-- [WebSocket Protocol](../technical/websocket.md) -- real-time event reference
-- [Authentication](../technical/auth.md) -- JWT and API key details
+- [Drives](../core-concepts/drives.md) -- file system architecture and drive scopes
+- [AI Providers](../features/ai-providers.md) -- configuring LLM providers

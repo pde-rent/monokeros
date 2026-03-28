@@ -172,6 +172,7 @@ System files are special files within member drives that define an [agent's](./a
 | Directory | Purpose |
 |-----------|---------|
 | `KNOWLEDGE/` | Contains domain knowledge documents that the agent can reference during conversations. Cannot be renamed or deleted. |
+| `WIKI/` | Wiki pages stored as markdown files. Pages under this prefix are served by the wiki system (`wiki.nav`, `wiki.page`, `wiki.save`). |
 
 ### How System Files Flow into Agent Behavior
 
@@ -211,35 +212,36 @@ flowchart LR
 
 ## File Operations
 
-Drives support standard CRUD operations through the file API:
+Drives support standard CRUD operations through Convex queries and mutations:
 
 ### Create
 
-| Operation | Endpoint | Parameters |
-|-----------|----------|------------|
-| Create file | `POST /api/files/:category/:ownerId/file` | `?dir=` (parent path), body: `{ name, extension?, content? }` |
-| Create folder | `POST /api/files/:category/:ownerId/folder` | `?dir=` (parent path), body: `{ name }` |
+| Operation | Convex Function | Parameters |
+|-----------|----------------|------------|
+| Create file | `files.createFile` | `driveType`, `ownerId`, `dir` (parent path), `name`, `extension?`, `content?` |
+| Create folder | `files.createFolder` | `driveType`, `ownerId`, `dir` (parent path), `name` |
 
 ### Read
 
-| Operation | Endpoint | Parameters |
-|-----------|----------|------------|
-| List all drives | `GET /api/files/workspaces` | -- |
-| Get team file tree | `GET /api/files/teams/:teamId` | -- |
-| Get agent file tree | `GET /api/files/agents/:agentId` | -- |
-| Read file content | `GET /api/files/teams/:teamId/file` | `?path=` |
-| Read file content | `GET /api/files/agents/:agentId/file` | `?path=` |
+| Operation | Convex Function | Parameters |
+|-----------|----------------|------------|
+| List all drives | `files.drives` | -- |
+| Get member file tree | `files.memberDrive` | `memberId` |
+| Get team file tree | `files.teamDrive` | `teamId` |
+| Get project file tree | `files.projectDrive` | `projectId` |
+| Get workspace file tree | `files.workspaceDrive` | -- |
+| Read file content | `files.getContent` | `fileId` |
 
 ### Update
 
-| Operation | Endpoint | Parameters |
-|-----------|----------|------------|
-| Update content | `PATCH /api/files/:category/:ownerId/content` | `?path=`, body: `{ content }` |
-| Rename | `PATCH /api/files/:category/:ownerId/rename` | `?path=`, body: `{ newName }` |
+| Operation | Convex Function | Parameters |
+|-----------|----------------|------------|
+| Update content | `files.updateContent` | `fileId`, `content` |
+| Rename | `files.renameItem` | `fileId`, `newName` |
 
 ### Delete
 
-Files can be deleted through the API unless they are system files or protected directories.
+Files can be deleted via `files.deleteItem` unless they are system files or protected directories.
 
 ---
 
@@ -267,8 +269,8 @@ flowchart TB
     Agent -.-x|"Blocked"| OtherAgent
     Agent -.-x|"Blocked"| OtherTeam
 
-    linkStyle 4 stroke:#ef4444,stroke-dasharray:5 5
-    linkStyle 5 stroke:#ef4444,stroke-dasharray:5 5
+    linkStyle 4 stroke-dasharray:5 5
+    linkStyle 5 stroke-dasharray:5 5
 
 ```
 
@@ -348,38 +350,11 @@ The MonokerOS UI provides rich file preview capabilities:
 
 ---
 
-## Storage Layout on Disk
+## Storage
 
-The physical storage layout maps drive types to the file system:
+All file storage is managed through the Convex database. Files are stored in the `files` table with metadata (name, path, mimeType, size, drive scope). Text files use inline `textContent` fields, while binary files are stored via Convex file storage using a `storageId` reference (uploaded via `files.generateUploadUrl`).
 
-```
-apps/api/data/
-+-- agents/                          # Member drives
-|   +-- sarah-chen/
-|   |   +-- SOUL.md
-|   |   +-- IDENTITY.md
-|   |   +-- SKILLS.md
-|   |   +-- FOUNDATION.md
-|   |   +-- MONOKEROS.md
-|   |   +-- config.toml
-|   |   +-- avatar.svg
-|   |   +-- KNOWLEDGE/
-|   |   |   +-- ux-principles.md
-|   |   |   +-- accessibility-guide.md
-|   |   +-- working-files/
-|   |       +-- wireframe-draft.md
-|   +-- alex-park/
-|       +-- SOUL.md
-|       +-- ...
-+-- workspaces/                      # Team drives
-    +-- team-design/
-    |   +-- style-guide.md
-    |   +-- component-library.md
-    |   +-- templates/
-    +-- team-development/
-        +-- coding-standards.md
-        +-- architecture-decisions/
-```
+Each drive type (member, team, project, workspace) is a logical partition within the same Convex table, filtered by `driveType` and `ownerId`.
 
 ---
 

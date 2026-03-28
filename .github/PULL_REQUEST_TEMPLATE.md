@@ -2,6 +2,12 @@
 
 <!-- Concise bullet points of what changed and why -->
 
+## CLA
+
+- [ ] I have signed the [Contributor License Agreement](../docs/CLA.md) (required before merge)
+
+> Our CLA bot will automatically comment on this PR with signing instructions if you haven't signed yet.
+
 ## Type of Change
 
 - [ ] Bug fix (non-breaking change that fixes an issue)

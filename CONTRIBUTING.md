@@ -1,6 +1,15 @@
 # Contributing to MonokerOS
 
-Thank you for your interest in contributing to MonokerOS. This guide covers the conventions and workflows that keep the codebase healthy and collaboration smooth.
+Thank you for your interest in contributing to MonokerOS! This guide covers the conventions and workflows that keep the codebase healthy and collaboration smooth.
+
+## Contributor License Agreement (CLA)
+
+Before your contributions can be merged, you must sign our CLA. This grants MonokerOS the right to distribute your contributions under both the AGPL v3 open-source license and our commercial license.
+
+- **Individuals**: Our CLA bot will automatically comment on your first PR with signing instructions
+- **Corporations**: Contact cla@monokeros.io for a Corporate CLA
+
+See [CLA.md](CLA.md) for the full agreement text.
 
 ---
 
@@ -38,16 +47,18 @@ cd monokeros
 # Install dependencies
 bun install
 
-# Copy environment template (API)
-cp apps/api/.env.example apps/api/.env
-# Edit apps/api/.env with your API keys
+# Create environment file (see README for required variables)
+cp .env.example .env
+# Edit .env with your API keys and secrets
 
-# Start both apps via Turbo
+# Start infrastructure (Convex + Container Service)
+docker compose up -d
+
+# Start the web app with hot-reload
 bun run dev
 
-# Or start individually:
-# API  — cd apps/api && bun --watch src/main.ts
-# Web  — cd apps/web && bunx next dev --port 3000 --turbopack
+# Or start the web app directly:
+# cd apps/web && bunx next dev --port 3000 --turbopack
 ```
 
 ### Useful Commands
@@ -256,21 +267,26 @@ Describe test scenarios.
 ```
 monokeros/
 ├── apps/
-│   ├── api/          # NestJS 11 on Bun (port 3001)
-│   └── web/          # Next.js 15 + TurboPack (port 3000)
+│   └── web/               # Next.js 15 + TurboPack (port 3000)
+├── convex/                # Schema, queries, mutations, actions, seed data
+├── services/
+│   └── container-service/ # Bun HTTP server for Docker orchestration (port 3002)
+├── docker/
+│   ├── openclaw-desktop/     # Agent container image (Ubuntu + OpenClaw)
+│   └── web/               # Production web Dockerfile
 ├── packages/
-│   ├── avatar/       # Avatar generation (sharp)
-│   ├── config/       # Shared TypeScript configs
-│   ├── constants/    # Business constants and enums
-│   ├── mcp/          # Model Context Protocol server
-│   ├── mock-data/    # Seed data and fixtures
-│   ├── renderer/     # Markdown/LaTeX rendering
-│   ├── templates/    # Workspace templates
-│   ├── types/        # Shared TypeScript types
-│   ├── ui/           # React UI components
-│   └── utils/        # Shared utilities
-├── turbo.json        # Turbo task definitions
-└── package.json      # Root workspace config
+│   ├── avatar/            # Avatar generation (sharp)
+│   ├── config/            # Shared TypeScript configs
+│   ├── constants/         # Business constants and enums
+│   ├── mcp/               # Model Context Protocol server
+│   ├── renderer/          # Markdown/LaTeX rendering
+│   ├── templates/         # Workspace templates
+│   ├── types/             # Shared TypeScript types
+│   ├── ui/                # React UI components
+│   └── utils/             # Shared utilities
+├── docker-compose.yml     # Infrastructure stack
+├── turbo.json             # Turbo task definitions
+└── package.json           # Root workspace config
 ```
 
 All packages use `main: "./src/index.ts"` (source-level references, no pre-build step).

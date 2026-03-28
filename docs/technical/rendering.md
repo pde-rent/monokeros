@@ -1,6 +1,6 @@
 # Rendering Pipeline
 
-The MonokerOS rendering pipeline converts raw markdown, code, and structured data into safe, styled HTML. It runs server-side in the `@monokeros/renderer` package and is used by both the API (via `RenderService`) and can be imported directly by any workspace package.
+The MonokerOS rendering pipeline converts raw markdown, code, and structured data into safe, styled HTML. It lives in the `@monokeros/renderer` shared package and can be imported directly by any workspace package -- both the web frontend and agent containers use it.
 
 ## Pipeline Overview
 
@@ -255,29 +255,9 @@ The rendered HTML is styled by two theme files:
 | `markdown-theme.css` | Typography, headings, lists, tables, blockquotes, mentions |
 | `code-theme.css` | Prism.js token colors, `<pre>` styling, line numbers |
 
-## Render Caching (RenderService)
+## Render Caching
 
-The API server's `RenderService` wraps the rendering functions with an LRU cache:
-
-```mermaid
-flowchart TD
-    A[Render Request] --> B{Cache hit?}
-    B -- Yes --> C[Return cached HTML]
-    B -- No --> D[Run rendering pipeline]
-    D --> E[Store in cache]
-    E --> F[Return HTML]
-
-    G[Eviction Timer] -->|Every 60s| H[Remove expired entries]
-```
-
-| Parameter | Value | Source |
-|-----------|-------|--------|
-| Max entries | `RENDER_CACHE_MAX_ENTRIES` | `@monokeros/constants` |
-| TTL | `RENDER_CACHE_TTL_MS` | `@monokeros/constants` |
-| Hash function | `Bun.hash` | Fast built-in hash, base-36 encoded |
-| Eviction | Every 60 seconds | Timer-based sweep |
-
-Cache keys are prefixed by content type (`md:` for markdown, `file:{ext}:` for file renders).
+Rendering results can be cached at the application layer. The `@monokeros/renderer` package itself is stateless -- it takes input and returns a `RenderResult`. Caching strategies are left to the consumer (e.g., the web frontend can memoize rendered HTML by content hash).
 
 ## RenderResult Type
 
@@ -291,17 +271,11 @@ interface RenderResult {
 
 The `hasMermaid` and `hasMath` flags allow the client to conditionally load the Mermaid hydrator or apply math-specific styles.
 
-## API Endpoints
+## Usage
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/workspaces/:slug/render/markdown` | Render markdown string to HTML |
-| POST | `/workspaces/:slug/render/file` | Render file content by extension |
-
-See the [REST API reference](api.md) for full endpoint documentation.
+The rendering pipeline is used directly as a library import -- there are no separate API endpoints for rendering. The web frontend imports `renderMarkdown` and `renderCSV` from `@monokeros/renderer` and calls them client-side.
 
 ## Related Documentation
 
 - [Chat & Messaging](../features/chat.md) -- How rendered HTML appears in chat
 - [File Management](../features/file-management.md) -- File preview rendering
-- [REST API](api.md) -- Render endpoints

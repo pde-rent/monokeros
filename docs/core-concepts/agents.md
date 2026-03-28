@@ -1,314 +1,189 @@
 # Agents
 
-Agents are the core primitive of MonokerOS. An agent is an autonomous AI worker that occupies a role within your organization -- the equivalent of a Kubernetes pod, an employee in your org chart, or an AI-powered team member. Each agent has a name, a role, a personality, a set of capabilities, and a model configuration that determines how it thinks.
-
-MonokerOS treats agents as first-class citizens with their own identity, file system, memory, and communication channels.
+An **agent** in MonokerOS is a containerized AI worker running inside its own Docker container. Each agent gets a full Linux desktop environment with a browser, a Bun runtime, and an OpenClaw instance that connects to an LLM provider. Agents are the fundamental unit of work -- they receive tasks, produce deliverables, participate in conversations, and collaborate with other agents through the team hierarchy.
 
 ---
 
-## What Makes an Agent
+## Container Architecture
+
+Every running agent is an isolated Docker container built on a purpose-built stack:
 
 ```mermaid
 graph TB
-    subgraph Agent["Agent: sarah-chen"]
+    subgraph Container["Agent Container (Docker)"]
         direction TB
 
-        subgraph Identity["Identity"]
-            Name["Name: Sarah Chen"]
-            Title["Title: Senior UX Designer"]
-            Spec["Specialization: User research & interaction design"]
-            Soul["Soul / Personality<br/>(system prompt)"]
+        subgraph Desktop["Desktop Environment"]
+            Xvnc["Xvnc (port 5900)"]
+            WS["websockify (port 6080)"]
+            noVNC["noVNC Web Client"]
+            OpenBox["OpenBox Window Manager"]
+            Chrome["Google Chrome"]
         end
 
-        subgraph Config["Configuration"]
-            Model["Model: claude-sonnet-4-5"]
-            Temp["Temperature: 0.7"]
-            Provider["Provider: Anthropic"]
-            MaxTok["Max Tokens: 4096"]
+        subgraph Runtime["Agent Runtime"]
+            Bun["Bun Runtime"]
+            OC["OpenClaw (port 18789)"]
+            MCP["MCP Server"]
         end
 
-        subgraph RuntimeInfo["Runtime"]
-            Status["Status: working"]
-            Service["OpenClaw Service<br/>Status: running"]
-        end
-
-        subgraph Files["Drive"]
-            SoulMD["SOUL.md"]
-            IdentityMD["IDENTITY.md"]
-            SkillsMD["SKILLS.md"]
-            FoundationMD["FOUNDATION.md"]
-            ConfigTOML["config.toml"]
-            Knowledge["KNOWLEDGE/"]
+        subgraph Identity["Provisioned Files"]
+            Soul["SOUL.md"]
+            Agents["AGENTS.md"]
+            Tools["TOOLS.md"]
+            User["USER.md"]
+            Config["openclaw.json"]
         end
     end
 
+    OC -->|"SSE streaming"| LLM["AI Provider"]
+    MCP -->|"tool results"| OC
+    WS --> Xvnc
+    noVNC --> WS
 ```
 
----
+| Component | Purpose |
+|-----------|---------|
+| **Ubuntu 24.04** | Base OS image |
+| **OpenBox** | Lightweight window manager for the virtual desktop |
+| **Xvnc** | Virtual framebuffer + VNC server on port 5900 |
+| **websockify + noVNC** | WebSocket proxy on port 6080 for browser-based VNC access |
+| **Google Chrome** | Full browser available to the agent for web research |
+| **Bun** | JavaScript/TypeScript runtime |
+| **OpenClaw** | Agent orchestration framework on port 18789 |
+| **MCP Server** | Model Context Protocol server running inside the container |
 
-## Agent Properties
+### Resource Limits
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | `string` | Unique identifier (UUID) |
-| `name` | `string` | Display name (e.g., "Sarah Chen") |
-| `type` | `MemberType` | `agent` (AI) or `human` |
-| `title` | `string` | Role title (e.g., "Senior UX Designer") |
-| `specialization` | `string` | Area of expertise (e.g., "User research & interaction design") |
-| `teamId` | `string \| null` | Team assignment |
-| `isLead` | `boolean` | Whether this agent is a team lead |
-| `system` | `boolean` | Whether this is a system agent (Mono, Keros) |
-| `status` | `MemberStatus` | Current operational status |
-| `gender` | `MemberGender` | `1` (male) or `2` (female) -- used for avatar generation |
-| `currentTaskId` | `string \| null` | Task currently being worked on |
-| `currentProjectId` | `string \| null` | Active project assignment |
-| `avatarUrl` | `string \| null` | Avatar image URL |
-| `identity` | `MemberIdentity` | Soul (system prompt), skills list, and memory entries |
-| `stats` | `MemberStats` | Performance metrics: tasks completed, avg agreement score, active projects |
-| `modelConfig` | `AgentModelConfig` | Per-agent model overrides |
-| `supervisedTeamIds` | `string[]` | Teams supervised by this agent (if lead/human) |
-| `permissions` | `string[]` | Granular permission set |
+Each agent container is constrained to prevent runaway resource consumption:
+
+| Resource | Limit |
+|----------|-------|
+| RAM | 512 MB |
+| CPU | 1 core |
+| Shared memory (`/dev/shm`) | 256 MB |
+| tmpfs | 100 MB |
+
+The container runs as a non-root `agent` user with `no-new-privileges` enabled.
 
 ---
 
 ## Agent Lifecycle
 
-Agents go through a well-defined lifecycle from creation to active operation. The lifecycle is managed by the OpenClaw service.
+Agents have three levels of state: a high-level lifecycle classification, a container state, and a runtime status.
 
-### Agent Runtime States
-
-```mermaid
-stateDiagram-v2
-    [*] --> OFFLINE : Agent created
-
-    OFFLINE --> PROVISIONING : Start requested
-    PROVISIONING --> IDLE : Provider resolved
-    IDLE --> WORKING : Task assigned / message received
-    WORKING --> IDLE : Task completed
-
-    IDLE --> ERROR : Provider unreachable
-    WORKING --> ERROR : LLM call failed
-
-    ERROR --> PROVISIONING : Auto-retry
-    ERROR --> OFFLINE : Max retries exceeded
-
-    OFFLINE --> [*]
-```
-
-| Status | Description |
-|--------|-------------|
-| `OFFLINE` | Agent exists in configuration only. Not active. |
-| `PROVISIONING` | Resolving provider credentials and model configuration. |
-| `IDLE` | Running and ready to accept messages or task assignments. |
-| `WORKING` | Actively processing a message or executing tool calls. |
-| `ERROR` | Provider unreachable or LLM call failed. May auto-retry. |
-
-### Operational Status (Member Status)
-
-Once running, an agent cycles through operational statuses:
-
-```mermaid
-stateDiagram-v2
-    IDLE --> WORKING : Task assigned / message received
-    WORKING --> REVIEWING : Cross-validation phase
-    WORKING --> IDLE : Task completed
-    REVIEWING --> IDLE : Review completed
-    WORKING --> BLOCKED : Dependency unmet / error
-    REVIEWING --> BLOCKED : Escalation required
-    BLOCKED --> IDLE : Blocker resolved
-    IDLE --> OFFLINE : Agent stopped
-    WORKING --> OFFLINE : Agent stopped
-    OFFLINE --> IDLE : Agent started
-```
-
-| Status | Description |
-|--------|-------------|
-| `idle` | Running but not actively processing work. Available for task assignment. |
-| `working` | Actively processing a task or responding to a message. |
-| `reviewing` | Participating in cross-validation -- reviewing another agent's output. |
-| `blocked` | Cannot proceed due to an unmet dependency, error, or escalation. |
-| `offline` | Agent is configured but inactive. Not accepting messages. |
-
-### Agent Lifecycle Levels
-
-Agents also have a higher-level lifecycle classification:
+### Lifecycle Levels
 
 | Lifecycle | Description |
 |-----------|-------------|
-| `active` | Fully operational. Agent is running or can be started on demand. |
+| `active` | Fully operational. Container is running or can be started on demand. |
 | `standby` | Registered but not currently needed. Can be activated quickly. |
-| `dormant` | Long-term inactive. Configuration preserved but not scheduled. |
+| `dormant` | Long-term inactive. Configuration preserved but not scheduled for use. |
 
----
+### Container States
 
-## The OpenClaw Service
-
-Each running agent is backed by the **OpenClawService** -- an in-process NestJS service that manages the LLM connection, conversation history, and tool execution. Unlike the old daemon architecture, OpenClaw runs inside the API server process itself.
+The Docker container itself transitions through these states:
 
 ```mermaid
-flowchart TB
-    subgraph API["API Server (NestJS)"]
-        OCS["OpenClawService"]
-        WS["WebSocket<br/>Gateways"]
-
-        subgraph AgentCtx1["Agent Context: sarah-chen"]
-            History1["Conversation<br/>History"]
-            Tools1["Tool Runtime"]
-        end
-
-        subgraph AgentCtx2["Agent Context: alex-park"]
-            History2["Conversation<br/>History"]
-            Tools2["Tool Runtime"]
-        end
-    end
-
-    OCS --> AgentCtx1
-    OCS --> AgentCtx2
-    OCS -->|"SSE stream"| Provider1["AI Provider<br/>(Anthropic, OpenAI, etc.)"]
-    OCS <-->|"Events"| WS
-
+stateDiagram-v2
+    [*] --> stopped : Container created
+    stopped --> running : Start requested
+    running --> stopped : Stop requested
+    running --> error : Crash or resource limit exceeded
+    error --> stopped : Reset
+    error --> running : Auto-restart
+    stopped --> [*] : Container removed
 ```
 
-Key service characteristics:
+| State | Description |
+|-------|-------------|
+| `stopped` | Container exists but is not running. No resource consumption. |
+| `running` | Container is up and OpenClaw is accepting requests. |
+| `error` | Container crashed or failed a health check. May auto-restart. |
 
-- **In-process** -- No child processes. OpenClaw runs within the NestJS API server, eliminating process management overhead.
-- **SSE streaming** -- LLM responses are consumed as Server-Sent Events and yielded as an `AsyncGenerator<DaemonEvent>`.
-- **No webhooks or secrets** -- Since the service is in-process, there is no HTTP communication or webhook secret management between the API and agent runtime.
-- **Provider resolution chain** -- Each agent's provider, API key, base URL, and model are resolved through a cascading chain (agent override -> workspace config -> environment variables).
-- **Bounded conversation history** -- Each agent maintains a bounded window of conversation context to stay within token limits.
+### Runtime Statuses (UI-Level)
 
----
-
-## Message Processing Flow
-
-When a user sends a chat message to an agent, the following sequence occurs:
+Once a container is running, the agent cycles through operational statuses visible in the UI:
 
 ```mermaid
-sequenceDiagram
-    participant Client as Browser
-    participant WS as WebSocket Gateway
-    participant API as ChatService
-    participant OC as OpenClawService
-    participant LLM as AI Provider
-
-    Client->>WS: chat:message (conversationId, content)
-    WS->>API: handleMessage()
-    API->>API: Save user message to store
-    API->>OC: sendMessage(memberId, content)
-
-    Note over OC: Build prompt with<br/>SOUL.md + history + tools
-
-    OC->>LLM: POST /chat/completions (streaming)
-
-    loop SSE Parsing
-        LLM-->>OC: SSE chunk
-        OC-->>WS: chat:stream-chunk (DaemonEvent)
-        WS-->>Client: Render chunk in real-time
-    end
-
-    opt Tool Calls
-        OC->>OC: Execute tool
-        Note over OC: tool_start / tool_end events
-        OC->>LLM: Tool result + continue
-    end
-
-    OC-->>OC: yield {"type":"done","data":{"response":"..."}}
-    OC->>API: Save agent message to store
-    OC-->>WS: chat:stream-end
-    WS-->>Client: Finalize message
+stateDiagram-v2
+    idle --> working : Task assigned or message received
+    working --> reviewing : Cross-validation phase
+    working --> idle : Task completed
+    reviewing --> idle : Review completed
+    working --> blocked : Dependency unmet or error
+    reviewing --> blocked : Escalation required
+    blocked --> idle : Blocker resolved
+    idle --> offline : Agent stopped
+    working --> offline : Agent stopped
+    offline --> idle : Agent started
 ```
 
-### Streaming Events
-
-OpenClaw yields events as **DaemonEvent** objects from an `AsyncGenerator`. Each event is a `DaemonEvent`:
-
-| Event Type | Description |
-|------------|-------------|
-| `status` | Phase indicator (e.g., "thinking", "researching") |
-| `tool_start` | Agent is invoking a tool (name, args) |
-| `tool_end` | Tool execution completed (name, duration) |
-| `content` | Text chunk from the LLM response |
-| `done` | Final complete response |
-| `error` | Error occurred during processing |
-
-These events are relayed through WebSocket events to the client in real time:
-
-| WebSocket Event | Direction | Purpose |
-|----------------|-----------|---------|
-| `chat:stream-start` | Server to Client | Agent begins responding |
-| `chat:stream-chunk` | Server to Client | Incremental text content |
-| `chat:thinking-status` | Server to Client | Agent's current thinking phase |
-| `chat:tool-start` | Server to Client | Tool invocation started |
-| `chat:tool-end` | Server to Client | Tool invocation completed |
-| `chat:stream-end` | Server to Client | Agent finished responding |
+| Status | Description |
+|--------|-------------|
+| `idle` | Running and ready. Available for task assignment or conversation. |
+| `working` | Actively processing a task or responding to a message. |
+| `reviewing` | Reviewing another agent's output during cross-validation. |
+| `blocked` | Cannot proceed due to an unmet dependency, error, or escalation. |
+| `offline` | Agent container is not running. Not accepting messages. |
 
 ---
 
-## System Files
+## Provisioned Files
 
-Each agent has a personal [drive](./drives.md) containing system files that define its identity and behavior. These files are protected -- they cannot be renamed or deleted.
+When a container starts, the Container Service writes identity files into the agent's working directory. These files define who the agent is, what it knows, and how it behaves.
 
 | File | Purpose |
 |------|---------|
-| `SOUL.md` | The agent's core identity and personality. This becomes the system prompt sent to the LLM. Defines tone, expertise boundaries, behavioral constraints. |
-| `IDENTITY.md` | Structured identity document: name, title, specialization, team affiliation, background narrative. |
-| `SKILLS.md` | Enumerated list of capabilities and tools the agent can use. Defines what the agent is allowed to do. |
-| `FOUNDATION.md` | Foundational knowledge and context about the workspace, projects, and organizational norms. |
-| `AGENTS.md` | Team roster listing all agents in the workspace, their roles, teams, and specializations. Read by OpenClaw for inter-agent awareness. |
-| `config.toml` | Machine-readable configuration: model settings, runtime parameters, drive access flags. |
-| `MONOKEROS.md` | Platform-level instructions injected by MonokerOS into the agent context. |
-| `avatar.svg` / `avatar.png` | The agent's visual avatar. |
-| `KNOWLEDGE/` | A protected directory containing domain knowledge documents the agent can reference. |
+| `SOUL.md` | The agent's core identity and personality. Becomes the system prompt sent to the LLM. Defines tone, expertise, and behavioral constraints. |
+| `AGENTS.md` | Team roster listing all agents in the workspace, their roles, teams, and specializations. Provides inter-agent awareness. |
+| `TOOLS.md` | Enumerated list of tools and capabilities available to the agent via the MCP server. |
+| `USER.md` | Context about the human user interacting with the workspace -- preferences, role, and communication style. |
+| `openclaw.json` | Machine-readable configuration for the OpenClaw runtime: model settings, provider credentials, MCP server endpoint, and channel configuration. |
 
-### How System Files Shape Agent Behavior
+### How Provisioned Files Shape Behavior
 
 ```mermaid
 flowchart LR
-    Soul["SOUL.md<br/>(personality)"] --> Prompt["System Prompt<br/>Assembly"]
-    Identity["IDENTITY.md<br/>(who am I)"] --> Prompt
-    Skills["SKILLS.md<br/>(what can I do)"] --> Prompt
-    Foundation["FOUNDATION.md<br/>(context)"] --> Prompt
-    Monokeros["MONOKEROS.md<br/>(platform rules)"] --> Prompt
-    Knowledge["KNOWLEDGE/<br/>(domain docs)"] --> Prompt
+    Soul["SOUL.md\n(personality)"] --> Prompt["System Prompt\nAssembly"]
+    Agents["AGENTS.md\n(team roster)"] --> Prompt
+    Tools["TOOLS.md\n(capabilities)"] --> Prompt
+    User["USER.md\n(user context)"] --> Prompt
 
-    Prompt --> LLM["LLM API Call"]
-    History["Conversation History"] --> LLM
-    UserMsg["User Message"] --> LLM
+    Prompt --> OC["OpenClaw"]
+    History["Conversation History"] --> OC
+    UserMsg["User Message"] --> OC
 
+    OC --> LLM["LLM API Call"]
     LLM --> Response["Agent Response"]
-
 ```
 
-OpenClaw assembles a complete prompt by combining all system files with conversation history and the user's message. This composite context shapes the agent's personality, knowledge, and behavioral boundaries for every interaction.
+OpenClaw assembles a complete prompt by combining all provisioned files with conversation history and the user's message. This composite context shapes the agent's personality, knowledge, and behavioral boundaries for every interaction.
+
+---
+
+## Agent Identity
+
+Each agent has a structured identity that defines who they are within the organization:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Display name (e.g., "Sarah Chen") |
+| `title` | `string` | Role title (e.g., "Senior UX Designer") |
+| `specialization` | `string` | Area of expertise |
+| `identity.soul` | `string` | Personality and behavioral instructions (system prompt text) |
+| `identity.skills` | `string[]` | List of capabilities and competencies |
+| `identity.memory` | `string[]` | Persistent memory entries across conversations |
+| `teamId` | `string` | Team assignment |
+| `isLead` | `boolean` | Whether this agent is a team lead |
+| `system` | `boolean` | Whether this is a system agent |
+| `gender` | `MemberGender` | Used for avatar generation |
 
 ---
 
 ## Model Configuration
 
-Each agent can specify its own model configuration, or inherit from the workspace default. The resolution follows a cascading chain:
-
-### Provider Resolution Chain
-
-```mermaid
-flowchart TB
-    subgraph APIKey["API Key Resolution"]
-        AK1["agent.modelConfig.apiKeyOverride"] --> AK2["workspace provider.apiKey"]
-        AK2 --> AK3["env: ZAI_API_KEY"]
-        AK3 --> AK4["empty string (fail)"]
-    end
-
-    subgraph BaseURL["Base URL Resolution"]
-        BU1["workspace provider.baseUrl"] --> BU2["env: ZAI_BASE_URL"]
-        BU2 --> BU3["DEFAULT_ZAI_BASE_URL"]
-    end
-
-    subgraph Model["Model Resolution"]
-        M1["agent.modelConfig.model"] --> M2["workspace provider.defaultModel"]
-        M2 --> M3["env: ZAI_MODEL"]
-        M3 --> M4["glm-5 (default)"]
-    end
-
-```
+Each agent can specify its own model configuration or inherit from the workspace default.
 
 ### Per-Agent Model Override
 
@@ -320,19 +195,67 @@ flowchart TB
 | `temperature` | `number` | Sampling temperature (0.0 - 2.0, default: 0.7) |
 | `maxTokens` | `number` | Maximum response tokens (default: 4096) |
 
-This means you can run a workspace where most agents use a cost-effective model (e.g., `gpt-4o-mini`) while lead agents or specialized reviewers use a more capable model (e.g., `claude-sonnet-4-5`).
+### Provider Resolution Chain
+
+When OpenClaw needs to call an LLM, credentials are resolved through a cascading chain:
+
+```mermaid
+flowchart TB
+    subgraph APIKey["API Key Resolution"]
+        AK1["agent.modelConfig.apiKeyOverride"] --> AK2["workspace provider.apiKey"]
+        AK2 --> AK3["env: LLM_API_KEY"]
+        AK3 --> AK4["empty string (fail)"]
+    end
+
+    subgraph BaseURL["Base URL Resolution"]
+        BU1["workspace provider.baseUrl"] --> BU2["env: LLM_BASE_URL"]
+        BU2 --> BU3["DEFAULT_LLM_BASE_URL"]
+    end
+
+    subgraph Model["Model Resolution"]
+        M1["agent.modelConfig.model"] --> M2["workspace provider.defaultModel"]
+        M2 --> M3["env: LLM_MODEL"]
+    end
+```
+
+This means you can run a workspace where most agents use a cost-effective model (e.g., `gpt-4o-mini`) while lead agents or specialized reviewers use a more capable model (e.g., `claude-sonnet-4-5`). MonokerOS supports 33+ AI providers out of the box, including OpenAI, Anthropic, Google, DeepSeek, xAI, Mistral, OpenRouter, Ollama, Groq, and many more.
 
 ---
 
-## Agent Roles and Hierarchy
+## Desktop Environment
 
-Agents are organized into a clear hierarchy within [teams](./teams.md):
+Each agent has a virtual Linux desktop accessible through the browser via noVNC. The desktop provides:
+
+- A full **Xvnc** virtual framebuffer on port 5900
+- **websockify** on port 6080 bridging WebSocket to VNC
+- **noVNC** web client for browser-based desktop viewing
+- **OpenBox** as a lightweight window manager
+- **Google Chrome** for web browsing and research
+
+By default, the VNC connection is **read-only** -- humans can observe what the agent is doing on its desktop but cannot interact with it. This provides transparency into agent activities without risking interference.
+
+---
+
+## System Agents
+
+MonokerOS includes two built-in system agents that are present in every workspace:
+
+- **Mono** -- The platform dispatcher. Routes incoming messages to the appropriate agents, manages workspace operations, and handles agent provisioning.
+- **Keros** -- The project manager. Manages projects, tasks, and team coordination. Has access to PM-specific tools (create/assign/move tasks, update projects).
+
+System agents have the `system: true` flag and cannot be deleted or reassigned to teams.
+
+---
+
+## Agent Hierarchy
+
+Agents are organized into a clear hierarchy within teams:
 
 ```mermaid
 graph TB
-    Human["Human Supervisor<br/>(Admin / Validator)"]
+    Human["Human Supervisor\n(Admin / Validator)"]
 
-    Lead["Team Lead Agent<br/>(isLead: true)"]
+    Lead["Team Lead Agent\n(isLead: true)"]
 
     Agent1["Agent 1"]
     Agent2["Agent 2"]
@@ -342,71 +265,11 @@ graph TB
     Lead --> Agent1
     Lead --> Agent2
     Lead --> Agent3
-
 ```
 
-- **Humans** interact with **Team Leads** -- never directly with individual agents
+- **Humans** interact with **Team Leads** -- not directly with every individual agent
 - **Team Leads** coordinate work within their team, conduct cross-validation, and communicate with other leads for cross-team collaboration
 - **Agents** work on tasks assigned by their lead, produce deliverables, and participate in cross-validation reviews
-
-### System Agents
-
-MonokerOS includes two built-in system agents:
-
-- **Mono** (`system_mono`) -- The platform orchestrator. Manages workspace operations, agent provisioning, and system health.
-- **Keros** (`system_keros`) -- The project manager. Manages projects, tasks, gates, and team coordination. Has access to PM tools (create/assign/move tasks, update projects, manage gates).
-
-System agents have the `system: true` flag and cannot be deleted or reassigned.
-
----
-
-## Agent Autonomy and Constraints
-
-Agent autonomy in MonokerOS is not unlimited. It is shaped and bounded by several layers:
-
-1. **Soul (Personality)** -- The `SOUL.md` file defines the agent's persona, tone, expertise boundaries, and behavioral rules. An agent with a "Senior QA Engineer" soul will approach problems differently than one with a "Creative Director" soul.
-
-2. **Skills** -- The `SKILLS.md` file enumerates what tools and capabilities the agent can use. An agent without a code execution skill cannot run code.
-
-3. **Permissions** -- The granular permission system (`members:read`, `tasks:write`, `files:write`, etc.) controls what resources the agent can access. Default agent permissions include read/write on tasks, conversations, and files but not workspace administration.
-
-4. **Communication hierarchy** -- Agents can only communicate within their team (with lead permission) and never across teams directly. All cross-team communication flows through leads.
-
-5. **Cross-validation** -- Critical deliverables are cross-validated by multiple agents through the sink-fan pattern, preventing any single agent from unilaterally committing work.
-
-6. **Human gates** -- SDLC gates require human approval before projects advance, providing a human-in-the-loop checkpoint.
-
----
-
-## Kubernetes Manifest
-
-Agents can be defined declaratively:
-
-```yaml
-apiVersion: v1
-kind: Agent
-metadata:
-  name: sarah-chen
-  labels:
-    team: ui-ux-design
-    seniority: senior
-spec:
-  displayName: "Sarah Chen"
-  title: "Senior UX Designer"
-  specialization: "User research, interaction design, and accessibility"
-  identity:
-    soulRef: "souls/ux-designer.md"
-  model:
-    provider: anthropic
-    name: claude-sonnet-4-5-20250929
-    temperature: 0.7
-    maxTokens: 4096
-  drives:
-    personal: true
-    team: true
-```
-
-The `identity` field supports either inline `soul` text or a `soulRef` pointing to an external file.
 
 ---
 
@@ -414,12 +277,12 @@ The `identity` field supports either inline `soul` text or a `soulRef` pointing 
 
 ### Agent Runtime Info
 
-The `AgentRuntime` structure provides real-time observability into each agent:
+The `agentRuntimes` table in Convex provides real-time observability into each agent:
 
 | Field | Description |
 |-------|-------------|
 | `memberId` | Which agent this runtime belongs to |
-| `status` | Agent status (offline, idle, working, error, etc.) |
+| `status` | Container state (stopped, running, error) |
 | `error` | Error message if in error state |
 | `retryCount` | Number of restart attempts |
 | `nextRetryAt` | When the next auto-retry is scheduled |
@@ -437,7 +300,7 @@ Each agent tracks performance metrics:
 
 ## Related Pages
 
-- [Workspaces](./workspaces.md) -- The container in which agents operate
+- [Workspaces](./workspaces.md) -- The organizational boundary in which agents operate
 - [Teams](./teams.md) -- How agents are organized into functional groups
 - [Projects & Tasks](./projects.md) -- The work agents perform
 - [Drives](./drives.md) -- Agent file systems and knowledge storage

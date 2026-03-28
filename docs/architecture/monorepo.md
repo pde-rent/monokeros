@@ -1,6 +1,6 @@
 # Monorepo Structure
 
-MonokerOS is a TurboRepo monorepo using Bun workspaces. It contains 2 applications and 10 shared packages. All packages use source-level imports -- there is no pre-build step for shared code. Package entry points are `main: "./src/index.ts"` (or `.tsx` for UI), and consumers import directly from TypeScript source.
+MonokerOS is a TurboRepo monorepo using Bun workspaces. It contains 1 web application, a Convex backend, supporting services, and 9 shared packages. All packages use source-level imports -- there is no pre-build step for shared code. Package entry points are `main: "./src/index.ts"` (or `.tsx` for UI), and consumers import directly from TypeScript source.
 
 ---
 
@@ -9,14 +9,19 @@ MonokerOS is a TurboRepo monorepo using Bun workspaces. It contains 2 applicatio
 ```
 monokeros/
   apps/
-    api/              @monokeros/api       NestJS 11 on Bun (port 3001)
     web/              @monokeros/web       Next.js 15 + TurboPack (port 3000)
+  convex/                                  Convex backend (queries, mutations, schema)
+  services/
+    container-service/                     Agent container orchestration service
+  docker/
+    openclaw-desktop/                         Dockerfile for agent desktop containers
+    container-service/                     Dockerfile for the container service
+    web/                                   Dockerfile for the web app
   packages/
     avatar/           @monokeros/avatar    Agent avatar generation (sharp)
     config/           @monokeros/config    Shared TypeScript configs
     constants/        @monokeros/constants Configuration values, industry presets
     mcp/              @monokeros/mcp       Model Context Protocol server
-    mock-data/        @monokeros/mock-data Seed data for development
     renderer/         @monokeros/renderer  Markdown rendering pipeline
     templates/        @monokeros/templates Workspace template definitions
     types/            @monokeros/types     Shared TypeScript types, enums, Zod schemas
@@ -35,8 +40,12 @@ monokeros/
 ```mermaid
 graph TB
     subgraph Apps["Applications"]
-        API["@monokeros/api<br/>NestJS 11 on Bun"]
         WEB["@monokeros/web<br/>Next.js 15"]
+    end
+
+    subgraph Backend["Backend"]
+        CONVEX["convex/<br/>Convex Backend"]
+        CS["services/container-service/<br/>Container Service"]
     end
 
     subgraph Packages["Shared Packages"]
@@ -45,24 +54,23 @@ graph TB
         UTILS["@monokeros/utils<br/>Utility Functions"]
         UI["@monokeros/ui<br/>React Components"]
         RENDER["@monokeros/renderer<br/>Markdown Pipeline"]
-        MOCK["@monokeros/mock-data<br/>Seed Data"]
         MCP["@monokeros/mcp<br/>MCP Server"]
         TMPL["@monokeros/templates<br/>Workspace Templates"]
         AVA["@monokeros/avatar<br/>Avatar Generation"]
         CFG["@monokeros/config<br/>TS Configs"]
     end
 
-    API --> TYPES & CONST & UTILS & RENDER & MOCK & TMPL & AVA
-    WEB --> TYPES & CONST & UTILS & UI & RENDER & MOCK & TMPL
+    WEB --> TYPES & CONST & UTILS & UI & RENDER & TMPL
+    CONVEX --> TYPES & CONST & TMPL & AVA
+    CS --> TYPES & CONST
 
     CONST --> TYPES
     UI --> TYPES & CONST
     UTILS --> TYPES
-    MOCK --> TYPES & CONST
     MCP --> TYPES & CONST
     TMPL --> TYPES
 
-    API & WEB & TYPES & CONST & UTILS & UI & RENDER & MOCK & MCP & TMPL & AVA -.->|devDependency| CFG
+    WEB & TYPES & CONST & UTILS & UI & RENDER & MCP & TMPL & AVA -.->|devDependency| CFG
 
 ```
 
@@ -80,31 +88,10 @@ Every package (except `@monokeros/config`) has a `devDependency` on `@monokeros/
 - `enums.ts` -- All platform enums: `MemberStatus`, `TaskStatus`, `WorkspaceIndustry`, `AiProvider` (31 providers), `WorkspaceRole`, `ConversationType`, `DriveType`, `AgentLifecycle`, and more
 - `models.ts` -- Runtime model interfaces: `Member`, `Team`, `Project`, `Task`, `ChatMessage`, `Workspace`, `Permission`, `AcceptanceCriterion`, `TaskArtifact`, `GitRepoBinding`, `DoDCriterion`
 - `validation.ts` -- Zod schemas for API request/response DTOs
-- `ws.ts` -- WebSocket event name constants (`WS_EVENTS`)
-- `zeroclaw.ts` -- Agent runtime types: `ZeroClawStatus`, `AgentRuntime`
+- `zeroclaw.ts` -- Agent runtime types: `AgentRuntime`, container lifecycle
 - `manifests/` -- Kubernetes-style manifest schemas for declarative configuration
 
 **Dependencies:** `zod`
-
-```typescript
-// Example: WS_EVENTS from ws.ts
-export const WS_EVENTS = {
-  chat: {
-    message: 'chat:message',
-    streamStart: 'chat:stream-start',
-    streamChunk: 'chat:stream-chunk',
-    streamEnd: 'chat:stream-end',
-    typing: 'chat:typing',
-    thinkingStatus: 'chat:thinking-status',
-    toolStart: 'chat:tool-start',
-    toolEnd: 'chat:tool-end',
-  },
-  member: { statusChanged: 'member:status-changed', ... },
-  task: { created: 'task:created', updated: 'task:updated', moved: 'task:moved' },
-  project: { gateUpdated: 'project:gate-updated' },
-  notification: { created: 'notification:created', ... },
-};
-```
 
 ### @monokeros/constants
 
@@ -114,8 +101,7 @@ export const WS_EVENTS = {
 - `WORKSPACE_INDUSTRIES` -- Industry configurations with default teams, phases, labels, and icons
 - `INDUSTRY_SUBTYPES` -- Valid subtypes per industry (e.g., Software Development: web, mobile, web3, ai_ml, gaming, embedded, desktop)
 - `LAUNCH_INDUSTRIES` -- Subset of industries available at launch (5 of 15)
-- Agent runtime constants: `DAEMON_MAX_HISTORY`, `LLM_TIMEOUT_MS`, `TOOL_REQUEST_TIMEOUT_MS`, `FILE_FETCH_TIMEOUT_MS`, `DEFAULT_ZAI_BASE_URL`, `DEFAULT_ZAI_MODEL`, `API_PORT`
-- WebSocket constants: `WS_OPEN`
+- Agent runtime constants: `DAEMON_MAX_HISTORY`, `LLM_TIMEOUT_MS`, `TOOL_REQUEST_TIMEOUT_MS`, `FILE_FETCH_TIMEOUT_MS`, `DEFAULT_LLM_BASE_URL`, `DEFAULT_LLM_MODEL`
 
 **Dependencies:** `@monokeros/types` (devDependency only)
 
@@ -159,12 +145,6 @@ const result = renderMarkdown(agentResponse);
 // result.hasMermaid -> boolean (client should initialize Mermaid)
 // result.hasMath    -> boolean (client should load math styles)
 ```
-
-### @monokeros/mock-data
-
-**Role:** Seed data for the development mock store. Provides a complete workspace with teams, agents, projects, tasks, conversations, and files for the "DU v2" demo workspace.
-
-**Dependencies:** `@monokeros/types`, `@monokeros/constants` (devDependencies only)
 
 ### @monokeros/templates
 
@@ -211,7 +191,6 @@ const result = renderMarkdown(agentResponse);
 
 - `tsconfig.base.json` -- Base config for all packages
 - `tsconfig.nextjs.json` -- Config for `apps/web`
-- `tsconfig.nestjs.json` -- Config for `apps/api`
 - `tsconfig.library.json` -- Config for shared packages
 
 ---
@@ -280,42 +259,33 @@ This is possible because both Bun and TurboPack natively understand TypeScript i
 
 ## Application Details
 
-### @monokeros/api (NestJS 11 on Bun)
+### Convex Backend
 
-The API server runs directly on Bun (not Node.js). NestJS 11 is used for its decorator-based routing, dependency injection, and gateway (WebSocket) support.
+The backend is powered by Convex -- a reactive backend-as-a-service that provides the database, real-time subscriptions, and serverless functions. All data operations (queries, mutations, actions) are defined in the `convex/` directory.
 
-**Key dependencies beyond shared packages:**
-- `@nestjs/common`, `@nestjs/core`, `@nestjs/websockets` -- NestJS framework
-- `grammy` -- Telegram bot integration
-- `reflect-metadata` -- Required by NestJS decorators
-- `rxjs` -- Required by NestJS internals
-- `zod` -- Request validation
-
-**Module structure:**
+**Key modules:**
 ```
-apps/api/src/
-  auth/           Authentication (JWT, API keys, guards)
-  chat/           Chat messaging and agent interaction
-  common/         Shared base classes (BaseGateway)
-  docs/           Documentation serving endpoints
-  files/          Drive file management
-  identity/       Agent identity generation (randomuser.me)
-  knowledge/      Knowledge base search
-  members/        Agent/member CRUD and lifecycle
-  models/         AI model catalog and listing
-  notifications/  Real-time notification system
-  platform/       BunWsAdapter, platform utilities
-  projects/       Project and gate management
-  render/         Server-side markdown/CSV rendering
-  store/          MockStore (in-memory data layer)
-  tasks/          Task CRUD and workflow
-  teams/          Team management
-  telegram/       Telegram bot integration (Grammy)
-  templates/      Workspace template marketplace
-  workspace/      Workspace CRUD and configuration
-  openclaw/       OpenClaw agent runtime service
-  main.ts         Application bootstrap
+convex/
+  schema.ts         Database schema definition
+  members.ts        Agent/member CRUD and lifecycle
+  teams.ts          Team management
+  projects.ts       Project and gate management
+  tasks.ts          Task CRUD and workflow
+  conversations.ts  Chat messaging
+  files.ts          Drive file management
+  wiki.ts           Wiki page system
+  workspace.ts      Workspace CRUD and configuration
+  ...
 ```
+
+### Container Service
+
+The Container Service (`services/container-service/`) manages agent container orchestration. It handles starting and stopping agent containers (Docker-based), health checks, and communication with the OpenClaw runtime inside each container.
+
+**Docker images:**
+- `docker/openclaw-desktop/` -- Agent desktop container with OpenClaw runtime and MCP server
+- `docker/container-service/` -- Container service image
+- `docker/web/` -- Web app production image
 
 ### @monokeros/web (Next.js 15)
 
@@ -323,7 +293,7 @@ The frontend is a Next.js 15 application using the App Router, React 19, TurboPa
 
 **Key dependencies beyond shared packages:**
 - `@xyflow/react` -- Interactive org chart (React Flow)
-- `@dnd-kit/*` -- Drag-and-drop for kanban boards
+- `convex` + `convex/react` -- Convex client and React bindings
 - `mermaid` -- Client-side Mermaid diagram rendering
 - `@phosphor-icons/react` -- Icon library
 - `codeflask` -- Code editor widget
@@ -334,13 +304,12 @@ The frontend is a Next.js 15 application using the App Router, React 19, TurboPa
 ```
 app/
   login/                    Login page
-  workspaces/               Workspace launchpad
   [workspace]/              Dynamic workspace routes
     projects/[project]/     Project views (kanban, gantt, list, queue)
     chat/[conversation]/    Chat interface
     files/                  Drive explorer
+    wiki/                   Wiki pages
     roles/                  RBAC management
-    settings/               Workspace settings
     org/                    Org chart visualization
 ```
 

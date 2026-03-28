@@ -10,24 +10,32 @@ MonokerOS implements an MCP server using the `@modelcontextprotocol/sdk` package
 
 ## Architecture
 
+The MCP server runs inside each agent container, spawned by OpenClaw via the `openclaw.json` configuration. It communicates with the Container Service over the internal Docker network (`http://container-service:3002`). External MCP clients (like Claude Desktop) can also run the MCP server standalone for workspace management.
+
 ```mermaid
 flowchart LR
-    subgraph External
+    subgraph External["External MCP Clients"]
         CC[Claude Desktop]
         CU[Cursor]
         OT[Other MCP Clients]
     end
 
-    subgraph MCP["MonokerOS MCP Server"]
+    subgraph Container["Agent Container"]
         direction TB
+        OC[OpenClaw Runtime]
+        MCP_INT[MCP Server]
+        OC -->|spawns| MCP_INT
+    end
+
+    subgraph Standalone["Standalone MCP"]
         ST[Stdio Transport]
         TC[Tool Categories]
         RC[Resource Types]
         AC[API Client]
     end
 
-    subgraph API["MonokerOS API"]
-        REST[REST Endpoints]
+    subgraph CS["Container Service"]
+        API[HTTP API]
     end
 
     CC --> ST
@@ -37,7 +45,8 @@ flowchart LR
     ST --> RC
     TC --> AC
     RC --> AC
-    AC -->|HTTP + Bearer mk_ key| REST
+    AC -->|HTTP + Bearer mk_ key| API
+    MCP_INT -->|HTTP internal network| API
 ```
 
 ## Setup
@@ -199,22 +208,23 @@ The MCP server also exposes read-only resources for quick data access:
 
 ## How Agents Use MCP Tools
 
-While the MCP server is designed for external clients, the pattern is similar to how agents use tools internally through the [OpenClaw service](daemon.md). The key difference:
+The MCP server runs inside each agent container, spawned by OpenClaw via the `openclaw.json` configuration. This gives agents access to the same 9 tool categories listed above. External MCP clients use the same tool interface.
 
 ```mermaid
 flowchart TD
     subgraph External["External MCP Client"]
         E1[Claude Desktop] -->|"MCP stdio"| E2[MCP Server]
-        E2 -->|"HTTP API"| E3[MonokerOS API]
+        E2 -->|"HTTP"| E3[Container Service]
     end
 
-    subgraph Internal["Internal Agent Tool Use"]
-        I1[OpenClaw Service] -->|"Direct call"| I2[MonokerOS API]
+    subgraph Internal["Agent Container"]
+        I1[OpenClaw Runtime] -->|"spawns"| I2[MCP Server]
+        I2 -->|"HTTP internal"| I3[Container Service]
     end
 ```
 
-- **MCP Server** -- External clients connect via stdio, tools are called through JSON-RPC, the MCP server translates to HTTP API calls.
-- **OpenClaw Service** -- Internal agents call the API directly from within the OpenClaw service using the same REST endpoints.
+- **External MCP** -- Clients connect via stdio, tools are called through JSON-RPC, the MCP server translates to HTTP calls to the Container Service.
+- **Internal MCP** -- Inside each agent container, OpenClaw spawns the MCP server as a tool provider. The MCP server communicates with the Container Service at `http://container-service:3002` over the internal Docker network.
 
 ## Example Usage
 
@@ -269,8 +279,6 @@ Note: If the conversation has an agent participant, this call may take up to 2 m
 
 ## Related Documentation
 
-- [REST API](api.md) -- The underlying HTTP API that MCP tools call
-- [Authentication](auth.md) -- API key authentication for MCP
-- [OpenClaw Service](daemon.md) -- Internal agent tool execution
 - [Chat & Messaging](../features/chat.md) -- Conversation and messaging details
 - [File Management](../features/file-management.md) -- File operations exposed as MCP tools
+- [Design Inspirations](../architecture/inspirations.md) -- OpenClaw and containerized agent architecture

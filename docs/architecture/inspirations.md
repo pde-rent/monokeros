@@ -14,13 +14,14 @@ graph TB
         K7["Declarative YAML Manifests"]
     end
 
-    subgraph OC["OpenClaw<br/>Agentic AI"]
+    subgraph OC["OpenClaw / Agno<br/>Agentic AI"]
         O1["Autonomous Agents"]
         O2["Tool Use"]
         O3["Long-Term Memory"]
         O4["System Prompts as Personality"]
         O5["Constrained Autonomy"]
         O6["Lightweight Runtime"]
+        O7["Multi-Agent Orchestration"]
     end
 
     subgraph PM["Jira / Linear<br/>Project Management"]
@@ -56,6 +57,7 @@ graph TB
     O3 -->|inform| M2
     O4 -->|inform| M2
     O6 -->|inform| M2
+    O7 -->|inform| M3
 
     P1 & P3 -->|inform| M8
     P2 & P6 -->|inform| M6
@@ -75,14 +77,14 @@ MonokerOS borrows heavily from Kubernetes in its resource model, declarative con
 | Kubernetes | MonokerOS | Parallel |
 |---|---|---|
 | **Namespace** | **Workspace** | Isolated environment with its own set of resources. All resources are scoped within a workspace, just as Kubernetes resources are scoped within a namespace. Multi-tenancy boundary. |
-| **Pod / Service** | **Agent (+ OpenClaw Service)** | The fundamental unit of execution. Each agent is managed by the OpenClaw service within the API process, analogous to how each Pod runs its own container(s). Has lifecycle states and status tracking. |
+| **Pod / Service** | **Agent (+ Container)** | The fundamental unit of execution. Each agent runs inside its own Docker container managed by the Container Service, analogous to how each Pod runs its own container(s). Has lifecycle states and status tracking. |
 | **Deployment / ReplicaSet** | **Team** | A logical grouping of Pods (agents) with a defined purpose. Teams organize agents by function (engineering, design, QA) just as Deployments organize replicas of a service. |
 | **PersistentVolume / PVC** | **Drive** | Shared storage that persists independently of agents. Drives can be mounted by multiple agents with configurable access (read-only, read-write), scoped by category (personal, team, project, workspace). |
 | **Ingress Controller / Traefik** | **Mono (Dispatcher Agent)** | The entry point for user requests. Mono receives all incoming messages and routes them to the appropriate agent, or delegates project management work to Keros -- analogous to how Traefik routes HTTP traffic to backend services. |
 | **Job / CronJob** | **Project** | A defined unit of work with completion criteria. Projects have phases (analogous to Job steps), defined teams and members, and drive allocations. |
 | **ReadinessProbe / LivenessProbe** | **SDLC Gates** | Quality checkpoints. SDLC gates require approval before a project can advance to the next phase, just as Kubernetes probes verify a Pod is ready to receive traffic. Gates support `pending`, `awaiting_approval`, `approved`, `rejected`, and `bypassed` states. |
-| **ConfigMap / Secret** | **Agent Config (SOUL.md, config.toml)** | Declarative configuration injected into the agent at runtime. The OpenClaw service reads `config.toml`, `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` from the agent's workspace directory, similar to how a Pod reads ConfigMaps and Secrets. |
-| **etcd (source of truth)** | **SQLite (planned) / MockStore** | The authoritative data store. Kubernetes uses etcd; MonokerOS uses SQLite (planned) with the API as the primary interface. YAML manifests are the import/export format, not the source of truth -- exactly mirroring `kubectl apply`. |
+| **ConfigMap / Secret** | **Agent Config (SOUL.md, config.toml)** | Declarative configuration injected into the agent at runtime. The OpenClaw runtime reads `config.toml`, `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` from the agent's workspace directory inside the container, similar to how a Pod reads ConfigMaps and Secrets. |
+| **etcd (source of truth)** | **Convex Database** | The authoritative data store. Kubernetes uses etcd; MonokerOS uses Convex as its persistent, real-time database. YAML manifests are the import/export format, not the source of truth -- exactly mirroring `kubectl apply`. |
 | **Controller / Reconciler** | **Reconciler Service** | Watches desired state in the database and reconciles it with actual state by provisioning agent workspace directories and updating agent status. |
 
 ### Manifest Format
@@ -140,61 +142,70 @@ This mirrors Kubernetes Pod lifecycle management -- the separation between desir
 
 ---
 
-## OpenClaw Parallels
+## Agentic AI Parallels
 
-MonokerOS agents are, internally, minimal [OpenClaw](https://openclaw.ai)-style agents. OpenClaw defines a framework for building autonomous AI agents with tool use, memory, and constrained autonomy. MonokerOS adapts these concepts into a managed platform.
+MonokerOS agents run as containerized [OpenClaw](https://openclaw.ai)-style agents. OpenClaw defines a framework for building autonomous AI agents with tool use, memory, and constrained autonomy. [Agno](https://github.com/agno-agi/agno) contributes the multi-agent orchestration model -- a programming language for building, running, and managing multi-agent systems at scale. MonokerOS adapts concepts from both into a managed platform where each agent runs inside its own OCI container.
 
-### What MonokerOS Draws from OpenClaw
+### What MonokerOS Draws from OpenClaw and Agno
 
-| OpenClaw Concept | MonokerOS Implementation |
-|---|---|
-| **Autonomous agent** | Each MonokerOS agent has its own conversation state, tools, and LLM access, managed by the OpenClaw service |
-| **System prompt as personality** | The agent's "soul" -- a markdown file (`SOUL.md`) that defines personality, values, communication style, and expertise |
-| **Tool use** | Agents can call `web_search`, `web_read`, `file_read`, `file_write`, `list_drives`, `knowledge_search`, plus role-specific tools (admin, PM, delegation) |
-| **Constrained autonomy** | Configurable `autonomy` level (`supervised` or `autonomous`) and `maxToolRounds` limit (1-20) per agent |
-| **Long-term memory** | Agent identity includes a `memory` array, plus persistent file drives for accumulated knowledge |
-| **Context injection** | OpenClaw reads multiple context files per agent: `SOUL.md`, `FOUNDATION.md` (workspace context), `AGENTS.md` (team/org context), `SKILLS.md` (capabilities) |
+| Concept | Source | MonokerOS Implementation |
+|---------|--------|--------------------------|
+| **Autonomous agent** | OpenClaw | Each agent has its own conversation state, tools, and LLM access, running inside a dedicated container |
+| **System prompt as personality** | OpenClaw | The agent's "soul" -- a markdown file (`SOUL.md`) that defines personality, values, communication style, and expertise |
+| **Tool use** | OpenClaw | Agents can call `web_search`, `web_read`, `file_read`, `file_write`, `list_drives`, `knowledge_search`, plus role-specific tools |
+| **Constrained autonomy** | OpenClaw | Configurable `autonomy` level (`supervised` or `autonomous`) and `maxToolRounds` limit (1-20) per agent |
+| **Long-term memory** | OpenClaw | Agent identity includes a `memory` array, plus persistent file drives for accumulated knowledge |
+| **Context injection** | OpenClaw | Multiple context files per agent: `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, `SKILLS.md` |
+| **Multi-agent orchestration** | Agno | Teams of agents with leads, routing, delegation, and structured collaboration across roles |
+| **Pluggable runtimes** | Agno | Runtime-agnostic architecture -- swap agent backends without changing application code |
 
-### The OpenClaw Service
+### The Container Service
 
-The OpenClaw service (`OpenClawService`) is MonokerOS's agent runtime -- an in-process NestJS service that manages all agent LLM interactions. It runs inside the API server process:
+The Container Service is MonokerOS's agent runtime orchestrator. Each agent runs inside its own OCI container with a pluggable agentic runtime (OpenClaw by default). The Container Service manages container lifecycle (start, stop, health checks) and provides an HTTP API for the Convex backend to interact with agents.
 
 ```mermaid
 graph TB
-    subgraph Service["OpenClaw Service (in-process)"]
+    subgraph CS["Container Service"]
         direction TB
+        Orch["Container Orchestrator"]
+        Health["Health Checks"]
+        API["HTTP API (port 3002)"]
+    end
+
+    subgraph Container["Agent Container"]
+        direction TB
+        OC["OpenClaw Runtime"]
         CTX["Context Files<br/>SOUL.md, FOUNDATION.md<br/>AGENTS.md, SKILLS.md"]
-        HIST["Conversation History<br/>(bounded, per-conversation)"]
-        TOOLS["Tool Definitions<br/>standard + role-based"]
+        MCP["MCP Server<br/>(tool provider)"]
         LOOP["Tool-Calling Loop<br/>(max 5 rounds)"]
         SSE["SSE Streaming<br/>to LLM Provider"]
     end
 
-    CTX --> HIST
-    HIST --> LOOP
-    TOOLS --> LOOP
+    Orch -->|"OCI start/stop"| Container
+    API -->|"HTTP"| OC
+    CTX --> LOOP
+    MCP --> LOOP
     LOOP --> SSE
 ```
 
-**Why an in-process service?**
+**Why OCI containers?**
 
-MonokerOS chose the in-process approach for three reasons:
+MonokerOS uses OCI containers (Podman or Docker, Kubernetes planned) for agent execution for three reasons:
 
-1. **Simplicity** -- No child processes, no webhook secrets, no port allocation. The service is a NestJS module that runs alongside the rest of the API.
+1. **Isolation** -- Each agent runs in its own sandboxed environment with its own filesystem, preventing cross-agent interference.
 
-2. **Performance** -- No inter-process communication overhead. Direct function calls within the same Bun process. SSE streaming from LLM providers is parsed and relayed via WebSocket in real time.
+2. **Scalability** -- Containers can be distributed across hosts (and across Kubernetes clusters), enabling horizontal scaling of the agent workforce.
 
-3. **Reliability** -- No stale processes after API restart. No daemon lifecycle management. Agent state is managed entirely within the API server.
-
-**Future direction:** MonokerOS may support pluggable agent backends -- including standalone OpenClaw Docker containers -- as an alternative to the in-process service. This would allow distributed execution, agent pools, and more sophisticated agent behaviors while keeping the platform's orchestration layer intact.
+3. **Security** -- Agent code execution is sandboxed. Podman's rootless mode adds an extra layer of host isolation. The MCP server inside each container provides controlled access to workspace resources via the Container Service API.
 
 ### Tool Calling Architecture
 
 ```mermaid
 sequenceDiagram
-    participant OC as OpenClaw Service
+    participant OC as OpenClaw (Container)
+    participant MCP as MCP Server (Container)
     participant LLM as LLM Provider
-    participant API as MonokerOS API
+    participant CS as Container Service
     participant Web as External Web
 
     OC->>LLM: chat/completions (messages + tools, stream: true)
@@ -202,25 +213,31 @@ sequenceDiagram
     alt LLM returns tool_calls
         LLM-->>OC: tool_calls: [web_search, file_read]
 
-        par Execute tools in sequence
-            OC->>Web: web_search("React 19 features")
-            Web-->>OC: Search results
-            OC->>API: file_read(members/neo/notes.md)
-            API-->>OC: File content
+        par Execute tools via MCP
+            OC->>MCP: web_search("React 19 features")
+            MCP->>Web: HTTP request
+            Web-->>MCP: Search results
+            MCP-->>OC: Results
+            OC->>MCP: file_read(members/neo/notes.md)
+            MCP->>CS: HTTP internal
+            CS-->>MCP: File content
+            MCP-->>OC: Content
         end
 
         OC->>LLM: chat/completions (+ tool results)
 
         alt More tool calls needed
             LLM-->>OC: tool_calls: [file_write]
-            OC->>API: file_write(members/neo/summary.md)
-            API-->>OC: Write confirmation
+            OC->>MCP: file_write(members/neo/summary.md)
+            MCP->>CS: HTTP internal
+            CS-->>MCP: Write confirmation
+            MCP-->>OC: Confirmation
             OC->>LLM: chat/completions (+ tool results)
         end
     end
 
     LLM-->>OC: Final text response (SSE stream)
-    OC-->>OC: Parse SSE, emit DaemonEvents
+    OC-->>CS: Stream events
 ```
 
 The loop runs for a maximum of `maxToolRounds` iterations (default 5, configurable per agent up to 20). If the limit is reached, the service returns the last assistant response or a fallback message.
@@ -323,13 +340,13 @@ The power of MonokerOS comes from combining these three domains into something n
 graph TB
     subgraph Problem["The Problem"]
         P1["Kubernetes orchestrates containers,<br/>not intelligent agents"]
-        P2["OpenClaw builds individual agents,<br/>not teams with project structure"]
+        P2["OpenClaw / Agno build individual agents,<br/>not teams with project structure"]
         P3["Jira manages human work,<br/>not AI agent work"]
     end
 
     subgraph Solution["MonokerOS: The Convergence"]
         S1["Kubernetes-grade orchestration<br/>for AI agent lifecycles"]
-        S2["OpenClaw-quality agent intelligence<br/>with tool use and memory"]
+        S2["OpenClaw / Agno-quality agent intelligence<br/>with tool use, memory, and multi-agent coordination"]
         S3["Jira-class project management<br/>purpose-built for AI teams"]
     end
 
@@ -347,11 +364,11 @@ MonokerOS positions itself as an operating system -- not a heavyweight framework
 
 | OS Primitive | MonokerOS Implementation | Inspiration Source |
 |---|---|---|
-| Process management | Agent lifecycle (provision, start, stop) via OpenClaw service | Kubernetes + OpenClaw |
-| Filesystem | Hierarchical drives with ACLs and category scoping | Kubernetes PVs + traditional OS |
-| IPC | WebSocket chat with SSE-based streaming and room-scoped events | OpenClaw + traditional OS |
+| Process management | Agent lifecycle (provision, start, stop) via Container Service | Kubernetes + OpenClaw |
+| Filesystem | Hierarchical drives with ACLs and category scoping (Convex file storage) | Kubernetes PVs + traditional OS |
+| IPC | Convex real-time subscriptions with SSE-based streaming | OpenClaw + traditional OS |
 | Scheduler | Mono dispatcher routes requests; reconciler manages desired state | Kubernetes scheduler |
-| User management | Workspace-scoped RBAC with JWT + API keys | Kubernetes RBAC |
+| User management | Workspace-scoped RBAC with Convex Auth | Kubernetes RBAC |
 | Package management | YAML manifests with `apply` / `export` | Kubernetes + Helm |
 | Init system | Reconciler watches database, provisions agent workspaces | Kubernetes controller manager |
 | Logging | Per-agent activity tracking | Kubernetes container logging |
@@ -359,13 +376,19 @@ MonokerOS positions itself as an operating system -- not a heavyweight framework
 
 ### Compatibility and Extensibility
 
-MonokerOS is designed to integrate with existing stacks rather than replace them:
+MonokerOS is designed to integrate with existing stacks rather than replace them. Every major subsystem is backed by an abstraction layer:
 
-- **31+ AI providers** via the OpenAI-compatible API pattern -- use any model from any provider
-- **MCP server** with 9 tool categories -- integrate with Claude, Cursor, Windsurf, or any MCP-compatible client
-- **REST API** with workspace-scoped routes -- build custom integrations or alternative frontends
-- **YAML manifests** as import/export format -- version control your workspace configuration in Git
-- **Industry presets** for 15 verticals (5 at launch) -- not just software development
+| Category | Supported | Planned |
+|----------|-----------|---------|
+| **Container Runtimes** | Podman, Docker | Kubernetes |
+| **Agentic Runtimes** | OpenClaw | nanobot, ZeroClaw, NanoClaw, PicoClaw, MimiClaw |
+| **LLM Providers** | 33+ via OpenAI-compatible API | -- |
+| **Project Management** | Built-in (Kanban, Gantt, List, Queue) | Jira, Linear, Asana, Trello, GitHub Issues |
+| **Chat / Messaging** | Built-in real-time chat | Slack, Discord, Microsoft Teams |
+| **File Storage** | Built-in scoped drives | Google Drive, OneDrive, Dropbox |
+| **MCP Clients** | 9 tool categories | Claude, Cursor, Windsurf, any MCP-compatible client |
+| **Configuration** | YAML manifests (Kubernetes-style) | -- |
+| **Industry Presets** | 15 verticals (5 at launch) | -- |
 
 The platform supports the full spectrum from fully supervised (human approves every action) to fully autonomous (agents operate independently within configured boundaries), with SDLC gates providing structured checkpoints regardless of autonomy level.
 

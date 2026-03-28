@@ -6,7 +6,8 @@ This guide walks you through setting up MonokerOS for local development.
 
 | Requirement | Minimum Version | Notes |
 |-------------|----------------|-------|
-| **Bun** | 1.1+ (recommended 1.3+) | Sole runtime and package manager. Never use `node`, `npm`, `npx`, or `yarn`. |
+| **Bun** | 1.1+ | Sole runtime and package manager. Never use `node`, `npm`, `npx`, or `yarn`. |
+| **Podman** or **Docker** | Podman 4.x+ / Docker 24+ | Container runtime for Convex backend, Container Service, and agent containers. Podman is recommended (daemonless, rootless). Docker works as a drop-in alternative. |
 | **Git** | 2.x | For cloning the repository. |
 
 ### Install Bun
@@ -24,6 +25,47 @@ bun --version
 # Should output 1.1.0 or higher
 ```
 
+### Install a Container Runtime
+
+MonokerOS supports **Podman** (recommended) and **Docker**. The Container Service auto-detects which runtime is available, preferring Podman when both are present.
+
+#### Option A: Podman (Recommended)
+
+Podman is daemonless and runs rootless by default.
+
+**macOS:**
+```bash
+brew install podman
+podman machine init
+podman machine start
+```
+
+**Linux (Fedora/RHEL):**
+```bash
+sudo dnf install podman podman-compose
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt install podman
+pip install podman-compose  # or: sudo apt install podman-compose
+```
+
+Verify your installation:
+```bash
+podman --version
+podman compose version
+```
+
+#### Option B: Docker
+
+Download and install Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop/). Ensure the Docker daemon is running before proceeding.
+
+```bash
+docker --version
+docker compose version
+```
+
 ---
 
 ## Clone and Install
@@ -34,64 +76,118 @@ cd monokeros
 bun install
 ```
 
-`bun install` resolves all workspace dependencies across both apps and all shared packages in a single pass.
+`bun install` resolves all workspace dependencies across the web app and all shared packages in a single pass.
 
 ### Monorepo Layout
 
 ```
 monokeros/
 ├── apps/
-│   ├── web/          # Next.js 15 + TurboPack (port 3000)
-│   └── api/          # NestJS 11 on Bun (port 3001)
-├── packages/         # 10 shared packages (types, constants, ui, utils, renderer, ...)
+│   └── web/              # Next.js 15 + TurboPack (port 3000)
+├── convex/               # Convex schema, functions, and seed data
+├── docker/
+│   ├── openclaw-desktop/    # Agent container Dockerfile (Ubuntu + OpenClaw)
+│   ├── container-service/# Container Service Dockerfile
+│   └── web/              # Web app production Dockerfile
+├── packages/             # Shared packages (types, constants, ui, utils, renderer, etc.)
+├── services/             # Container Service source
+├── docker-compose.yml    # Infrastructure stack
 ├── turbo.json
-└── package.json      # Bun workspaces root
+└── package.json          # Bun workspaces root
 ```
-
-For a deeper look at the architecture, see [System Overview](../architecture/overview.md).
 
 ---
 
 ## Environment Setup
 
-MonokerOS requires a small set of environment variables for its API server. A template is provided.
+MonokerOS requires environment variables for the infrastructure stack. Create a `.env` file in the project root.
 
 ### 1. Copy the Example File
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+cp .env.example .env
 ```
+
+Or create `.env` manually with the required variables.
 
 ### 2. Configure Required Variables
 
-Open `apps/api/.env` and fill in your values:
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CONVEX_SELF_HOSTED_ADMIN_KEY` | Yes | -- | Admin key for the self-hosted Convex backend. Generate with `openssl rand -hex 32`. |
+| `CONTAINER_SERVICE_SECRET` | Yes | -- | Shared secret between Convex actions and Container Service. Generate with `openssl rand -hex 32`. |
+| `LLM_API_KEY` | Yes | -- | API key for your chosen LLM provider. |
+| `LLM_BASE_URL` | No | `https://api.openai.com/v1` | Base URL for the provider's OpenAI-compatible endpoint. |
+| `LLM_MODEL` | No | `gpt-4o` | Model identifier sent in chat completion requests. |
+| `NEXT_PUBLIC_CONVEX_URL` | No | `http://127.0.0.1:3210` | URL where the browser reaches the Convex backend. |
+
+Example `.env`:
 
 ```dotenv
-# --- Required ---
-ZAI_API_KEY=your_api_key_here
-ZAI_BASE_URL=https://api.openai.com/v1
-ZAI_MODEL=gpt-4o
-
-# --- Optional overrides ---
-# OPENCLAW_GATEWAY_URL=http://127.0.0.1:18789
-# ZEROCLAW_DATA_DIR=./data/agents
+CONVEX_SELF_HOSTED_ADMIN_KEY=your_admin_key_here
+CONTAINER_SERVICE_SECRET=your_secret_here
+LLM_API_KEY=sk-your-api-key-here
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
 ```
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `ZAI_API_KEY` | Yes | API key for your chosen AI provider. |
-| `ZAI_BASE_URL` | Yes | Base URL for the provider's API endpoint. |
-| `ZAI_MODEL` | Yes | Model identifier (e.g., `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-2.0-flash`). |
+---
+
+## Start Infrastructure
+
+The Docker Compose stack runs the Convex backend, Convex dashboard, Container Service, and the web app.
+
+```bash
+docker compose up -d
+```
+
+This starts four services:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `convex-backend` | 3210, 3211 | Self-hosted Convex real-time database |
+| `convex-dashboard` | 6791 | Convex admin dashboard |
+| `container-service` | 3002 | Docker container orchestration for agents |
+| `web` | 3000 | Next.js 15 web application |
+
+---
+
+## Build the Agent Desktop Image
+
+Agent containers are spawned dynamically by the Container Service. You need to build the base image first:
+
+```bash
+# Podman
+podman build -t monokeros/openclaw-desktop docker/openclaw-desktop/
+
+# Docker
+docker build -t monokeros/openclaw-desktop docker/openclaw-desktop/
+```
+
+This builds an Ubuntu 24.04 image with OpenBox, Xvnc, noVNC, Chrome, and OpenClaw pre-installed. Each agent gets its own instance of this image at runtime.
+
+---
+
+## Push Convex Schema
+
+Deploy the Convex schema and functions to the self-hosted backend:
+
+```bash
+bunx convex deploy --admin-key $CONVEX_SELF_HOSTED_ADMIN_KEY --url http://localhost:3210
+```
+
+This pushes the schema definitions, queries, mutations, and actions from the `convex/` directory. Seed data is auto-loaded via `convex/seed.ts` on first deployment.
 
 ---
 
 ## AI Provider Setup
 
-MonokerOS connects to LLM providers through an OpenAI-compatible API interface, giving you access to 31+ providers. Set `ZAI_BASE_URL` and `ZAI_API_KEY` for whichever provider you choose.
+MonokerOS connects to LLM providers through an OpenAI-compatible API interface, giving you access to 33+ providers. Set `LLM_BASE_URL` and `LLM_API_KEY` for whichever provider you choose.
 
 ### Common Provider Configurations
 
-| Provider | `ZAI_BASE_URL` | `ZAI_MODEL` (example) |
+| Provider | `LLM_BASE_URL` | `LLM_MODEL` (example) |
 |----------|----------------|----------------------|
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
 | Anthropic (via proxy) | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` |
@@ -102,31 +198,27 @@ MonokerOS connects to LLM providers through an OpenAI-compatible API interface, 
 | Together AI | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
 | Ollama (local) | `http://localhost:11434/v1` | `llama3` |
 
-Any provider that exposes an OpenAI-compatible `/chat/completions` endpoint will work.
+Any provider that exposes an OpenAI-compatible `/chat/completions` endpoint will work. Provider settings can also be configured per-workspace through the Convex dashboard.
 
 ---
 
-## Start Development
+## Development Mode
 
-Run both the API and web app simultaneously via TurboRepo:
+For active development with hot-reloading, run the infrastructure stack via Docker and the web app locally:
 
 ```bash
+# Start Convex + Container Service via Docker
+docker compose up -d convex-backend convex-dashboard container-service
+
+# Run the web app with hot-reloading (separate terminal)
 bun run dev
 ```
 
-This starts:
-- **API server** on [http://localhost:3001](http://localhost:3001)
-- **Web app** on [http://localhost:3000](http://localhost:3000)
+This gives you TurboPack hot-reloading on the Next.js app while the backend services run in Docker.
 
-### Running Apps Individually
-
-If you prefer to run each app in a separate terminal:
+### Running the Web App Directly
 
 ```bash
-# Terminal 1 - API server (with hot reload)
-cd apps/api && bun --watch src/main.ts
-
-# Terminal 2 - Web app (with TurboPack)
 cd apps/web && bunx next dev --port 3000 --turbopack
 ```
 
@@ -134,12 +226,12 @@ cd apps/web && bunx next dev --port 3000 --turbopack
 
 ## Verify Your Setup
 
-1. Open [http://localhost:3000](http://localhost:3000) in your browser.
-2. Log in with **any email address** and the password **`password`**.
-   - Development mode accepts any email; no registration required.
-3. You should see the **Design Unlimited v2** seed workspace pre-loaded with agents, teams, and projects.
+1. Open [http://localhost:3000](http://localhost:3000) -- the MonokerOS web interface.
+2. Open [http://localhost:6791](http://localhost:6791) -- the Convex dashboard (for inspecting data and functions).
+3. Sign up with an email address and password (Convex Auth handles registration).
+4. You should see the seed workspace pre-loaded with agents, teams, and projects.
 
-If you can see the workspace dashboard, your installation is complete. Head to the [Quick Start](./quick-start.md) guide to start exploring.
+If you can see the workspace dashboard, your installation is complete.
 
 ---
 
@@ -147,48 +239,70 @@ If you can see the workspace dashboard, your installation is complete. Head to t
 
 | Command | Description |
 |---------|-------------|
-| `bun run dev` | Start both apps via TurboRepo |
+| `bun run dev` | Start the web app via TurboRepo (hot-reloading) |
 | `bun run typecheck` | Type-check all packages (uses `tsgo` via turbo) |
 | `bun run lint` | Lint all packages (uses oxlint) |
 | `bun run build` | Build all packages |
-| `bun run clean` | Clean build artifacts |
+| `docker compose logs -f` | Tail logs for all Docker services |
+| `docker compose down` | Stop all Docker services |
 
-> **Note:** Typechecking uses tsgo (`@typescript/native-preview`), the native Go-based TypeScript type checker, providing significantly faster type checking than standard `tsc`. The turbo pipeline handles this automatically, but if you need to run it manually: `bunx @typescript/native-preview --noEmit`
+> **Note:** Typechecking uses tsgo (`@typescript/native-preview`), the native Go-based TypeScript type checker. The turbo pipeline handles this automatically, but you can run it manually: `bunx @typescript/native-preview --noEmit`
 
 ---
 
 ## Common Issues
 
-### Port Conflicts
+### Container Runtime Not Running
 
-If port 3000 or 3001 is already in use:
+If `docker compose up` (or `podman compose up`) fails, ensure your runtime is available:
 
 ```bash
-# Find what is using the port
-lsof -i :3000
-lsof -i :3001
+# Podman
+podman info
 
-# Kill the process
-kill -9 <PID>
+# Docker
+docker info
 ```
 
-To use different ports:
-- **Web:** `cd apps/web && bunx next dev --port 3002 --turbopack`
-- **API:** Update the port in `apps/api/src/main.ts`
+### Port Conflicts
 
-Note that CORS is configured for `localhost:3000` by default. If you change the web port, update the CORS configuration in the API accordingly.
+If ports 3000, 3002, 3210, or 6791 are already in use:
+
+```bash
+lsof -i :3000
+lsof -i :3210
+```
+
+Ports can be overridden via environment variables in `.env`:
+
+```dotenv
+CONVEX_PORT=3210
+CONVEX_DASHBOARD_PORT=6791
+CONTAINER_SERVICE_PORT=3002
+WEB_PORT=3000
+```
 
 ### Missing Environment Variables
 
-If agents fail to respond or you see provider errors in the console:
+If agents fail to start or you see provider errors:
 
-1. Verify `apps/api/.env` exists and contains valid values for `ZAI_API_KEY`, `ZAI_BASE_URL`, and `ZAI_MODEL`.
-2. Ensure your API key has not expired or hit its rate limit.
-3. Check that the `ZAI_BASE_URL` matches the correct endpoint for your provider (see the table above).
+1. Verify `.env` exists in the project root with valid values for all required variables.
+2. Ensure `CONVEX_SELF_HOSTED_ADMIN_KEY` and `CONTAINER_SERVICE_SECRET` are set.
+3. Ensure your `LLM_API_KEY` has not expired or hit its rate limit.
+4. Check that `LLM_BASE_URL` matches the correct endpoint for your provider.
+
+### Agent Desktop Image Not Found
+
+If agent containers fail to start, ensure you have built the base image:
+
+```bash
+# Use whichever runtime you have installed
+podman build -t monokeros/openclaw-desktop docker/openclaw-desktop/
+# or
+docker build -t monokeros/openclaw-desktop docker/openclaw-desktop/
+```
 
 ### Bun Version Mismatch
-
-The project specifies `bun@1.3.8` as its package manager. If you encounter unexpected behavior:
 
 ```bash
 bun --version
@@ -197,14 +311,10 @@ bun --version
 bun upgrade
 ```
 
-### Mock Store Data Loss
-
-The development environment uses an in-memory mock store. All data (workspaces, agents, conversations) is lost when the API server restarts. Seed data (the Design Unlimited v2 workspace) is automatically re-loaded on startup.
-
 ---
 
 ## Next Steps
 
 - [Quick Start](./quick-start.md) -- explore the platform and chat with your first agent
-- [Self-Hosting](./self-hosting.md) -- configuration reference for hosting MonokerOS
-- [System Overview](../architecture/overview.md) -- understand the architecture
+- [Self-Hosting](./self-hosting.md) -- full deployment reference with security and operations
+- [Core Concepts: Agents](../core-concepts/agents.md) -- understand agent configuration and capabilities

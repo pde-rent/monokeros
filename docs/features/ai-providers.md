@@ -74,7 +74,7 @@ flowchart TD
     B -- Yes --> C[Use agent's API key]
     B -- No --> D{Workspace provider configured?}
     D -- Yes --> E[Use workspace provider API key]
-    D -- No --> F{ZAI_API_KEY env var set?}
+    D -- No --> F{LLM_API_KEY env var set?}
     F -- Yes --> G[Use environment API key]
     F -- No --> H[Empty key - will likely fail]
 
@@ -82,18 +82,18 @@ flowchart TD
     I -- Yes --> J[Use agent's provider base URL]
     I -- No --> K{Workspace default provider set?}
     K -- Yes --> L[Use workspace provider base URL]
-    K -- No --> M{ZAI_BASE_URL env var?}
+    K -- No --> M{LLM_BASE_URL env var?}
     M -- Yes --> N[Use env base URL]
-    M -- No --> O[Use DEFAULT_ZAI_BASE_URL]
+    M -- No --> O[Use DEFAULT_LLM_BASE_URL]
 ```
 
 The resolution chain for each component:
 
 | Component | Priority 1 | Priority 2 | Priority 3 | Fallback |
 |-----------|-----------|-----------|-----------|----------|
-| **API Key** | `member.modelConfig.apiKeyOverride` | `workspaceProvider.apiKey` | `ZAI_API_KEY` env | `''` (empty) |
-| **Base URL** | Agent's provider `baseUrl` | Workspace provider `baseUrl` | `ZAI_BASE_URL` env | `DEFAULT_ZAI_BASE_URL` |
-| **Model** | `member.modelConfig.model` | Workspace provider `defaultModel` | `ZAI_MODEL` env | `DEFAULT_ZAI_MODEL` |
+| **API Key** | `member.modelConfig.apiKeyOverride` | `workspaceProvider.apiKey` | `LLM_API_KEY` env | `''` (empty) |
+| **Base URL** | Agent's provider `baseUrl` | Workspace provider `baseUrl` | `LLM_BASE_URL` env | `DEFAULT_LLM_BASE_URL` |
+| **Model** | `member.modelConfig.model` | Workspace provider `defaultModel` | `LLM_MODEL` env | `DEFAULT_LLM_MODEL` |
 
 ## Model Configuration Per Agent
 
@@ -123,31 +123,9 @@ Set `modelConfig` to `null` to use the workspace default.
 
 ## Workspace Provider Configuration
 
-Workspace admins can configure providers at the workspace level:
+Workspace admins can configure providers at the workspace level. Provider configuration is stored in the Convex database as part of the workspace record.
 
-```bash
-# List configured providers
-curl http://localhost:3001/api/workspaces/:slug/config/providers \
-  -H "Authorization: Bearer <token>"
-
-# Add a provider
-curl -X POST http://localhost:3001/api/workspaces/:slug/config/providers \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "openai",
-    "baseUrl": "https://api.openai.com/v1",
-    "apiKey": "sk-...",
-    "defaultModel": "gpt-4o",
-    "label": "Production OpenAI"
-  }'
-
-# Set default provider for all agents
-curl -X PATCH http://localhost:3001/api/workspaces/:slug/config/default-provider \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"defaultProviderId": "openai"}'
-```
+Providers can be managed via the workspace settings UI or through the MCP tools (`workspace.add_provider`, `workspace.list_providers`, `workspace.remove_provider`, `workspace.set_default_provider`).
 
 ## How to Add a New Provider
 
@@ -162,19 +140,17 @@ For providers that do not natively support OpenAI format, an intermediate proxy 
 
 ## Environment Variables
 
-These environment variables are read by the API server and used by the [OpenClaw service](../technical/daemon.md) for LLM calls:
+These environment variables are read by the Container Service and used by agents for LLM calls:
 
 | Variable | Description |
 |----------|-------------|
-| `ZAI_API_KEY` | Default API key for LLM calls |
-| `ZAI_BASE_URL` | Default base URL for LLM API |
-| `ZAI_MODEL` | Default model name |
+| `LLM_API_KEY` | Default API key for LLM calls |
+| `LLM_BASE_URL` | Default base URL for LLM API |
+| `LLM_MODEL` | Default model name |
 
-Set these in `apps/api/.env` for local development.
+Set these in `.env` for local development.
 
 ## Related Documentation
 
-- [OpenClaw Service](../technical/daemon.md) -- How the agent runtime uses provider config for LLM calls
 - [Agents](../core-concepts/agents.md) -- Agent model configuration
-- [REST API](../technical/api.md) -- Provider management endpoints
 - [MCP Server](../technical/mcp.md) -- `workspace.add_provider` and `workspace.list_providers` tools

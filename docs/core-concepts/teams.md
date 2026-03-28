@@ -101,7 +101,7 @@ Every team has exactly one **lead agent** (identified by `isLead: true`). The le
 | **Human interface** | Reports to human supervisors (admins, validators). Handles escalations. |
 | **Team coordination** | Manages agent workload, resolves blockers, and adjusts priorities |
 
-Visually, lead agents are distinguished in the [Diagram view](../UI_SPECIFICATION.md) with a crown icon and a larger node size (180x120 vs 160x100 for regular agents).
+Visually, lead agents are distinguished in the [Org Chart](../features/org-chart.md) with a crown icon and a larger node size (180x120 vs 160x100 for regular agents).
 
 ---
 
@@ -131,7 +131,7 @@ graph LR
 
     AgentA1 -.-x|"NEVER"| AgentB1
 
-    linkStyle 8 stroke:#ef4444,stroke-dasharray:5 5
+    linkStyle 8 stroke-dasharray:5 5
 
 ```
 

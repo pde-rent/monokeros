@@ -1,6 +1,8 @@
 # System Architecture
 
-MonokerOS follows a three-layer architecture: a React-based presentation tier, a NestJS application tier running on Bun, and a data tier that currently uses an in-memory mock store (with SQLite planned). Agent intelligence is provided by the OpenClaw service -- an in-process NestJS service that calls LLM providers directly via SSE streaming using the OpenAI-compatible API pattern.
+MonokerOS follows a four-layer architecture: a React presentation tier, a Convex real-time data layer, a Container Service for OCI container orchestration, and individual containers running agent runtimes. Each layer has a distinct responsibility and communicates with adjacent layers through well-defined interfaces.
+
+MonokerOS is designed around **pluggable backends** at every layer -- OCI-compatible container runtimes (Podman, Docker, Kubernetes planned), swappable agentic runtimes (OpenClaw default; nanobot, ZeroClaw, NanoClaw, PicoClaw, MimiClaw planned), and integration bridges for existing productivity tools (Jira, Slack, Google Drive, and more). This makes it a drop-in solution or integration point for organizations of any size.
 
 ---
 
@@ -8,333 +10,338 @@ MonokerOS follows a three-layer architecture: a React-based presentation tier, a
 
 ```mermaid
 graph TB
-    subgraph Client["Presentation Layer"]
+    subgraph Presentation["Presentation Layer"]
         Browser["Browser"]
-        NextJS["Next.js 15 + TurboPack<br/>React 19, Tailwind v4"]
-        Renderer["@monokeros/renderer<br/>Markdown Pipeline"]
-    end
-
-    subgraph API["Application Layer"]
-        NestJS["NestJS 11 on Bun<br/>REST Controllers"]
-        Guards["AuthGuard<br/>PermissionsGuard"]
-        WS["WebSocket Layer"]
-        OCS["OpenClawService<br/>Agent Runtime"]
-        ChatGW["ChatGateway"]
-        MemberGW["MembersGateway"]
-        TaskGW["TasksGateway"]
-        ProjGW["ProjectsGateway"]
-        NotifGW["NotificationsGateway"]
+        NextJS["Next.js 15 + TurboPack\nReact 19, Tailwind v4\nPort 3000"]
+        Renderer["@monokeros/renderer\nMarkdown Pipeline"]
     end
 
     subgraph Data["Data Layer"]
-        Store["MockStore<br/>(in-memory)"]
-        FS["Filesystem<br/>Agent Drives"]
+        Convex["Convex Backend\nPort 3210"]
+        ConvexDash["Convex Dashboard\nPort 6791"]
+        ConvexData["convex-data volume"]
+    end
+
+    subgraph Orchestration["Orchestration Layer"]
+        CS["Container Service\nBun HTTP Server\nPort 3002"]
+        Docker["Container Engine\n(Podman / Docker)"]
+    end
+
+    subgraph Agents["Agent Layer (Dynamic Containers)"]
+        A1["Agent Container 1\nOpenClaw + Desktop"]
+        A2["Agent Container 2\nOpenClaw + Desktop"]
+        AN["Agent Container N\nOpenClaw + Desktop"]
     end
 
     subgraph External["External Services"]
-        LLM["LLM Provider<br/>(OpenAI-compatible)"]
-        WebSearch["Web Search API"]
-        WebRead["Web Reader API"]
+        LLM["LLM Providers\n33+ supported"]
     end
 
-    Browser -->|HTTP REST| NestJS
-    Browser -->|WebSocket| WS
-    NextJS -->|SSR / RSC| Browser
-    NextJS ---|uses| Renderer
-
-    NestJS --> Guards
-    Guards --> NestJS
-    WS --> ChatGW & MemberGW & TaskGW & ProjGW & NotifGW
-
-    NestJS -->|CRUD| Store
-    NestJS -->|read/write| FS
-    NestJS --> OCS
-    OCS -->|"SSE streaming"| LLM
-    OCS -->|"tool calls"| WebSearch & WebRead
-
-    OCS -->|stream events| ChatGW
-    ChatGW -->|WebSocket push| Browser
-
+    Browser -->|"HTTP"| NextJS
+    NextJS ---|"uses"| Renderer
+    NextJS -->|"Queries, Mutations,\nSubscriptions"| Convex
+    Convex -->|"Actions (HTTP)"| CS
+    CS -->|"OCI API"| Docker
+    Docker --> A1 & A2 & AN
+    CS -->|"SSE proxy"| A1 & A2 & AN
+    A1 & A2 & AN -->|"SSE streaming"| LLM
+    Convex --> ConvexData
 ```
 
 ---
 
-## The Three Layers
+## The Four Layers
 
 ### 1. Presentation Layer (Next.js 15)
 
 The frontend is a Next.js 15 application running with TurboPack on port 3000. It uses React 19, Tailwind CSS v4, and imports shared packages directly at the source level (no build step required for packages).
 
+Key responsibilities:
+
+- Rendering the workspace UI (org chart, kanban boards, file browser, chat)
+- Subscribing to Convex queries for real-time data updates
+- Calling Convex mutations for user actions (create task, send message, etc.)
+- Rich content rendering via `@monokeros/renderer` (markdown, LaTeX, Mermaid, code highlighting)
+
 Key UI dependencies:
-- **@xyflow/react** -- Interactive org chart visualization (React Flow)
-- **@dnd-kit** -- Drag-and-drop for kanban boards and sortable lists
-- **mermaid** -- Client-side Mermaid diagram rendering
-- **@phosphor-icons/react** -- Icon system
-- **codeflask** -- Inline code editor component
 
-The rendering pipeline (`@monokeros/renderer`) processes agent responses on the server side, converting markdown to sanitized HTML with support for LaTeX math, syntax highlighting, Mermaid diagram placeholders, and entity mention links.
+| Library | Purpose |
+|---------|---------|
+| `@xyflow/react` | Interactive org chart visualization (React Flow) |
+| `@dnd-kit` | Drag-and-drop for kanban boards and sortable lists |
+| `mermaid` | Client-side Mermaid diagram rendering |
+| `@phosphor-icons/react` | Icon system |
+| `codeflask` | Inline code editor component |
 
-### 2. Application Layer (NestJS 11 on Bun)
+### 2. Data Layer (Convex)
 
-The API runs on port 3001 using NestJS 11 with Bun as the runtime (not Node.js). It exposes both REST endpoints for CRUD operations and WebSocket connections for real-time events.
+Convex is a self-hosted real-time backend running on port 3210. It replaces the traditional REST API + database combination with a single system that provides:
 
-```mermaid
-graph LR
-    subgraph NestJS["NestJS Application"]
-        direction TB
-        AM["AuthModule"]
-        MM["MembersModule"]
-        TM["TeamsModule"]
-        PM["ProjectsModule"]
-        TKM["TasksModule"]
-        CM["ChatModule"]
-        FM["FilesModule"]
-        OCM["OpenClawModule"]
-        NM["NotificationsModule"]
-        KM["KnowledgeModule"]
-    end
+- **Schema-enforced tables** -- All data is stored in typed Convex tables with validation
+- **Real-time subscriptions** -- The UI subscribes to queries that automatically re-run when underlying data changes
+- **Mutations** -- Transactional writes that trigger subscription updates
+- **Actions** -- Server-side functions that can call external services (like the Container Service)
+- **Auth** -- Built-in authentication with password-based login and session management
+- **File storage** -- Native file storage for attachments and uploads
 
-    AM -->|guards all| MM & TM & PM & TKM & CM & FM & OCM & NM & KM
+Convex tables:
 
-```
+| Table | Description |
+|-------|-------------|
+| `workspaces` | Workspace configuration and metadata |
+| `workspaceMembers` | Human user memberships and roles |
+| `members` | Agent and human member records |
+| `teams` | Team definitions |
+| `projects` | Project definitions, phases, gates |
+| `tasks` | Individual work items |
+| `conversations` | Chat conversations |
+| `messages` | Chat messages |
+| `files` | File metadata |
+| `notifications` | User notifications |
+| `apiKeys` | Programmatic access keys (mk_ prefix) |
+| `agentRuntimes` | Agent container state |
+| `activities` | Activity log / audit trail |
 
-**Authentication** is handled by a global `AuthGuard` that intercepts every request:
-1. Routes decorated with `@Public()` bypass authentication entirely.
-2. Tokens starting with `mk_` are validated as API keys against the `ApiKeyService`.
-3. All other Bearer tokens are verified as JWTs via the `AuthService`.
+The Convex Dashboard (port 6791) provides a web UI for inspecting tables, running queries, and monitoring the backend.
 
-**RBAC** uses workspace-scoped roles (`admin`, `validator`, `viewer`) checked via a `PermissionsGuard` with granular permission strings like `members:read`, `tasks:write`, and `files:admin`.
+### 3. Orchestration Layer (Container Service)
 
-### 3. Data Layer (Mock Store / Future SQLite)
+The Container Service is a lightweight Bun HTTP server running on port 3002. It manages the lifecycle of agent containers and acts as an SSE proxy between Convex and the agentic runtime instances running inside agent containers.
 
-The current data tier is an in-memory `MockStore` -- a singleton service that holds all workspace state in TypeScript Maps. This is seeded on startup with demo data and is wiped on server restart.
+The Container Service is **OCI-compatible** -- it communicates with any container engine that exposes the Docker-compatible REST API over a Unix socket. At startup, the runtime detection module (`runtime.ts`) auto-detects the available engine, preferring Podman (daemonless, rootless) and falling back to Docker. Kubernetes support for distributing agents across a cluster is planned.
 
-The planned migration path replaces `MockStore` with SQLite via `bun:sqlite`:
-- A global `registry.db` for workspace list and user memberships
-- Per-workspace `workspace.db` files for all runtime state
-- WAL mode with 30-second busy timeout for concurrent access
+Key responsibilities:
 
-File storage uses the physical filesystem, organized by drive category:
-```
-drives/
-  members/{agent-name}/
-  teams/{team-name}/
-  projects/{project-name}/
-  workspace/shared/
-```
+- **Container lifecycle** -- Start, stop, and restart agent containers via the Podman/Docker Engine API
+- **SSE proxy** -- Forward messages from Convex actions to the agentic runtime endpoint inside agent containers, and stream SSE responses back as NDJSON
+- **Health monitoring** -- Track container health and report status back to Convex
+- **File provisioning** -- Write agent identity files (SOUL.md, AGENTS.md, TOOLS.md, USER.md, openclaw.json) into agent data volumes before container start
+- **Runtime detection** -- Auto-detect Podman or Docker at startup; configurable via `CONTAINER_RUNTIME` or `CONTAINER_SOCKET` env vars
 
----
+### 4. Agent Layer (OCI Containers)
 
-## Request Flow
+Each running agent is an isolated OCI container with a full Linux desktop environment. The default agentic runtime is **OpenClaw**, but the architecture is runtime-agnostic -- planned backends include nanobot, ZeroClaw, NanoClaw, PicoClaw, and MimiClaw. Any runtime that exposes an OpenAI-compatible `/v1/chat/completions` streaming endpoint can be used. See [Agents](../core-concepts/agents.md) for detailed container architecture.
 
-### HTTP REST (CRUD Operations)
+Container specifications:
 
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant N as Next.js
-    participant A as NestJS API
-    participant G as AuthGuard
-    participant S as MockStore
+| Property | Value |
+|----------|-------|
+| Base image | Ubuntu 24.04 |
+| Desktop | OpenBox + Xvnc + noVNC |
+| Browser | Google Chrome |
+| Runtime | Bun + OpenClaw |
+| Ports | 5900 (VNC), 6080 (noVNC), 18789 (OpenClaw) |
+| RAM limit | 512 MB |
+| CPU limit | 1 core |
+| SHM | 256 MB |
+| User | Non-root `agent` user |
 
-    B->>N: User action (e.g., create task)
-    N->>A: POST /api/workspaces/:slug/tasks
-    A->>G: Intercept request
-    G->>G: Verify JWT or API key
-    G->>G: Check workspace role + permissions
-    G-->>A: Authorized
-    A->>S: Store.tasks.set(id, task)
-    A-->>N: 201 Created (task JSON)
-    N-->>B: Update UI
-    A->>A: TasksGateway.emitTaskCreated()
-    A-->>B: WebSocket: task:created event
-```
-
-### WebSocket (Real-Time Events)
-
-The WebSocket layer uses a custom `BunWsAdapter` that bridges NestJS gateway decorators with Bun's native WebSocket server. Multiple gateways share a single WebSocket endpoint:
-
-| Gateway | Events | Scope |
-|---|---|---|
-| `ChatGateway` | `chat:message`, `chat:stream-start`, `chat:stream-chunk`, `chat:stream-end`, `chat:typing`, `chat:thinking-status`, `chat:tool-start`, `chat:tool-end` | Room-scoped (per conversation) |
-| `MembersGateway` | `member:status-changed`, `member:created`, `member:updated` | Global broadcast |
-| `TasksGateway` | `task:created`, `task:updated`, `task:moved` | Global broadcast |
-| `ProjectsGateway` | `project:gate-updated` | Global broadcast |
-| `NotificationsGateway` | `notification:created`, `notification:read`, `notification:read-all` | Per-client |
-
-The `BunWsAdapter` maintains an array of connect callbacks -- one per registered gateway -- so that all gateways' `@SubscribeMessage` handlers are invoked on incoming messages. This resolved a critical bug where only the last registered gateway's handlers were functional.
+Agent containers are spawned dynamically by the Container Service via the OCI-compatible engine API. They are not defined in `docker-compose.yml` -- only the infrastructure services (Convex, Container Service, Web) are statically defined.
 
 ---
 
-## Agent Runtime Architecture
+## Data Flow
 
-Agent intelligence is provided by **OpenClawService** -- an in-process NestJS service that calls LLM providers directly. There are no child processes, no webhooks, and no NDJSON. The service runs within the NestJS API process and streams LLM responses via SSE (Server-Sent Events).
+### Real-Time UI Updates
 
-Key characteristics:
-
-- **In-process execution** -- no separate daemon processes to manage or monitor
-- **Per-agent conversation state** -- each agent maintains its own bounded message history
-- **Independent LLM configuration** -- agents can use different models and providers
-- **SSE streaming** -- responses are streamed directly from the LLM provider to the client via WebSocket
+All real-time data flows through Convex subscriptions:
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant WS as WebSocket
-    participant API as NestJS API
-    participant OCS as OpenClawService
+    participant UI as Next.js UI
+    participant Convex as Convex Backend
+
+    UI->>Convex: Subscribe to query (e.g., list messages)
+    Convex-->>UI: Initial data
+    Note over Convex: Data changes (new message stored)
+    Convex-->>UI: Updated data (automatic)
+    Note over UI: React re-renders with new data
+```
+
+There are no WebSocket connections between the browser and the API. Convex handles all real-time synchronization natively.
+
+### Agent Communication Flow
+
+When a user sends a message to an agent:
+
+```mermaid
+sequenceDiagram
+    participant User as Browser
+    participant Next as Next.js
+    participant Convex as Convex Backend
+    participant CS as Container Service
+    participant OC as OpenClaw (Container)
     participant LLM as LLM Provider
 
-    U->>WS: Send chat message
-    WS->>API: ChatGateway receives
-    API->>API: Save user message to store
-    API->>OCS: Forward to agent service
-    OCS->>LLM: chat/completions (SSE streaming, with tools)
+    User->>Next: Send chat message
+    Next->>Convex: Mutation: store user message
+    Convex->>CS: Action: POST /agents/:id/message
+    CS->>OC: POST /v1/chat/completions (SSE)
+    OC->>LLM: POST /chat/completions (stream: true)
 
-    loop Tool Calling Loop (max 5 rounds)
-        LLM-->>OCS: tool_calls response (SSE)
-        OCS->>OCS: Execute tool (web_search, file_read, etc.)
-        OCS->>WS: chat:tool-start event
-        OCS->>WS: chat:tool-end event
-        OCS->>LLM: chat/completions (with tool results, SSE)
+    loop Streaming Response
+        LLM-->>OC: SSE chunk
+        OC-->>CS: SSE event
+        CS-->>Convex: NDJSON DaemonEvent
+        Convex-->>Convex: Mutation: update message content
     end
 
-    LLM-->>OCS: Final text response (SSE)
-    OCS->>API: Save agent response to store
-    OCS->>WS: chat:stream-chunk events
-    OCS->>WS: chat:stream-end event
-    WS-->>U: Real-time response display
-```
+    Note over Convex,Next: Subscription fires
+    Next-->>User: UI renders streamed content
 
-### Agent Provisioning
-
-When an agent is started, `OpenClawService`:
-1. Loads the agent's configuration including model settings and provider credentials
-2. Builds the system prompt from `SOUL.md`, `FOUNDATION.md`, `AGENTS.md`, and `SKILLS.md` in the agent's runtime directory
-3. Registers the agent as active and ready to receive messages
-4. Resolves the LLM provider chain (agent override, workspace provider, environment default)
-
-### SSE Streaming
-
-OpenClawService sends requests to the LLM provider with `stream: true` and parses the SSE response in real time. Each SSE event contains a delta with either content tokens or tool call fragments. The service assembles these deltas into complete tool calls or content blocks and emits corresponding WebSocket events to the client as they arrive.
-
-### Available Tools
-
-Each agent has access to tools based on its role:
-
-| Tool Category | Tools | Available To |
-|---|---|---|
-| **Standard** | `web_search`, `web_read`, `file_read`, `file_write`, `list_drives`, `knowledge_search` | All agents |
-| **Admin** | `create_team`, `create_member`, `update_team`, `create_project`, `update_workspace` | Agents with admin context |
-| **PM** | `create_task`, `assign_task`, `move_task`, `update_task`, `list_tasks`, `list_members`, `list_teams`, `list_projects`, `update_project`, `update_gate` | Keros (project manager) |
-| **Delegation** | `delegate_to_keros` | Mono (dispatcher) |
-
----
-
-## Multi-Gateway WebSocket Architecture
-
-```mermaid
-graph TB
-    subgraph BunWS["BunWsAdapter (Single WebSocket Endpoint)"]
-        direction TB
-        CB["connectCallbacks[]"]
-        HE["handlerEntries[] per client"]
+    opt Tool Calls
+        OC->>OC: Execute tool via MCP server
+        Note over OC: tool_start / tool_end events
+        OC->>LLM: Tool result + continue
     end
 
-    subgraph Gateways["Registered Gateways"]
-        CG["ChatGateway<br/>join, leave"]
-        MG["MembersGateway"]
-        TG["TasksGateway"]
-        PG["ProjectsGateway"]
-        NG["NotificationsGateway"]
-    end
-
-    Client["Browser WebSocket"] -->|single connection| BunWS
-
-    CG & MG & TG & PG & NG -->|register handlers| CB
-    BunWS -->|dispatch messages| HE
-    HE -->|invoke matching| CG & MG & TG & PG & NG
-
+    OC-->>CS: done event
+    CS-->>Convex: Final message stored
 ```
-
-The `BunWsAdapter` is a custom WebSocket adapter that maps NestJS's gateway pattern onto Bun's native WebSocket API. It maintains:
-
-- **`connectCallbacks[]`** -- An array of callbacks, one registered per gateway. On each new WebSocket connection, every callback fires to initialize that gateway's state for the client.
-- **Handler entries per client** -- Each client accumulates handler entries from all gateways. When a message arrives (e.g., `{ event: "join", data: "conv-123" }`), the adapter invokes the matching `@SubscribeMessage('join')` handler from whichever gateway registered it.
-
-This design ensures that ChatGateway's room-scoped `join`/`leave` handlers coexist with MembersGateway's global broadcast, TasksGateway's task events, and NotificationsGateway's per-client notifications -- all on a single WebSocket connection.
-
----
-
-## Rendering Pipeline
-
-Agent responses are markdown that may contain LaTeX math, Mermaid diagrams, code blocks, and entity mentions. The rendering pipeline (`@monokeros/renderer`) processes this server-side:
-
-```mermaid
-graph LR
-    MD["Raw Markdown<br/>from Agent"] --> MI["markdown-it<br/>(core parser)"]
-    MI --> TM["texmath plugin<br/>LaTeX → MathML"]
-    MI --> MM["mermaid plugin<br/>```mermaid → div"]
-    MI --> ML["mention-links plugin<br/>@agent #project ~task :file"]
-    MI --> HI["heading-ids plugin<br/>Anchor navigation"]
-    MI --> PR["Prism.js<br/>Syntax highlighting"]
-    TM & MM & ML & HI & PR --> RAW["Raw HTML"]
-    RAW --> SAN["sanitize-html<br/>XSS prevention"]
-    SAN --> OUT["Safe HTML +<br/>metadata flags"]
-
-```
-
-| Stage | Library | Purpose |
-|---|---|---|
-| Core parser | `markdown-it` | Parse markdown to HTML with linkify and typographer |
-| LaTeX math | `markdown-it-texmath` + `temml` | Convert `$...$` and `$$...$$` to MathML (zero client JS) |
-| Mermaid | Custom plugin | Replace `` ```mermaid `` blocks with `<div class="mermaid-diagram">` placeholders |
-| Mentions | Custom plugin | Transform `@agent`, `#project`, `~task`, `:file` into styled `<span>` elements |
-| Heading IDs | Custom plugin | Add `id` attributes to headings for anchor navigation |
-| Syntax highlighting | Prism.js | Highlight code blocks in 16+ languages (TypeScript, Python, Rust, Go, SQL, etc.) |
-| Sanitization | `sanitize-html` | Strip dangerous HTML while preserving safe rendering output |
-
-The `renderMarkdown()` function returns a `RenderResult` with the sanitized HTML plus boolean flags (`hasMermaid`, `hasMath`) so the client knows whether to initialize Mermaid rendering or load math styles.
 
 ---
 
 ## Security Model
 
+### Authentication
+
+MonokerOS uses two authentication mechanisms:
+
+| Method | Format | Use Case |
+|--------|--------|----------|
+| **Convex Auth** | Password-based sessions | Human users logging in through the web UI |
+| **API Keys** | `mk_` prefixed tokens | Programmatic access from external tools and MCP clients |
+
+API keys are stored in the `apiKeys` Convex table, scoped to a workspace and member, and carry the member's role.
+
+### Authorization
+
+Role-based access control is enforced at the Convex layer:
+
+| Role | Permissions |
+|------|-------------|
+| **Admin** | Full control including workspace configuration, member management, and provider setup |
+| **Validator** | Read/write on most resources, gate approvals, but no workspace-level admin |
+| **Viewer** | Read-only access to all resources |
+
+Every Convex table has a `workspaceId` field. All queries and mutations verify that the authenticated user has access to the workspace and sufficient role permissions.
+
+### Container Service Security
+
+The Container Service uses Bearer token authentication. Convex actions include a shared secret when calling the Container Service API. Unauthorized requests are rejected.
+
+### Agent Container Security
+
+Agent containers run with restricted privileges:
+
+- Non-root `agent` user
+- `no-new-privileges` security option
+- Read-only VNC by default (humans can observe but not interact with the desktop)
+- Resource limits (512MB RAM, 1 CPU) prevent runaway consumption
+- Containers are isolated on the bridge network (Podman rootless adds an extra layer of host isolation)
+
+---
+
+## Network Architecture
+
+All services communicate over a bridge network (`monokeros`):
+
 ```mermaid
-graph TB
-    subgraph Auth["Authentication"]
-        JWT["JWT Token<br/>(short-lived)"]
-        APIKey["API Key<br/>(mk_ prefix)"]
+graph LR
+    subgraph Network["monokeros bridge network"]
+        Web["web\nPort 3000"]
+        Convex["convex-backend\nPort 3210"]
+        ConvexDash["convex-dashboard\nPort 6791"]
+        CS["container-service\nPort 3002"]
+        A1["agent-1\nPorts 5900, 6080, 18789"]
+        A2["agent-2\nPorts 5900, 6080, 18789"]
     end
 
-    subgraph RBAC["Authorization"]
-        WR["WorkspaceRole<br/>admin | validator | viewer"]
-        PERM["Permissions<br/>members:read, tasks:write, ..."]
-        PG["PermissionsGuard<br/>+ @Permissions() decorator"]
-    end
-
-    subgraph Decorators["Route Protection"]
-        PUB["@Public()<br/>Skip auth entirely"]
-        PRO["Protected<br/>(default — all routes)"]
-    end
-
-    JWT & APIKey -->|verified by| AG["AuthGuard<br/>(global)"]
-    AG -->|sets request.user| RBAC
-    WR -->|checked by| PG
-    PG -->|matches against| PERM
-
+    External["External\n(Browser)"] --> Web
+    External --> ConvexDash
+    Web --> Convex
+    Convex --> CS
+    CS --> A1 & A2
 ```
 
-- **JWT tokens** authenticate human users. The payload contains `sub` (user ID), `email`, and `name`. Workspace role is resolved server-side per request.
-- **API keys** (prefixed `mk_`) authenticate programmatic access. Each key is scoped to a workspace and member, carrying the member's role.
-- The global `AuthGuard` is applied to every route by default. Only routes explicitly decorated with `@Public()` bypass authentication.
+Internal DNS allows services to reference each other by container name (e.g., `convex-backend:3210`, `container-service:3002`). Both Podman and Docker support this via the bridge network driver.
+
+### Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `convex-data` | Persistent Convex database storage |
+| `agent-data` | Shared volume for agent identity files and workspace data |
+| `chromium-cache` | Shared Chromium cache (~250MB) to avoid per-container download |
+
+---
+
+## Docker Compose Services
+
+The `docker-compose.yml` defines the infrastructure services:
+
+| Service | Image | Port | Description |
+|---------|-------|------|-------------|
+| `convex-backend` | `ghcr.io/get-convex/convex-backend` | 3210 | Self-hosted Convex backend |
+| `convex-dashboard` | Convex dashboard image | 6791 | Convex data inspection UI |
+| `container-service` | Custom (Bun) | 3002 | OCI container orchestration and SSE proxy |
+| `web` | Custom (Next.js) | 3000 | Presentation layer |
+
+Agent containers are not listed in `docker-compose.yml`. They are created dynamically by the Container Service via the OCI-compatible engine API (Podman or Docker).
+
+---
+
+## Technology Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | Next.js 15 + TurboPack | Server-rendered React application |
+| UI Framework | React 19 + Tailwind CSS v4 | Component rendering and styling |
+| Data Backend | Convex (self-hosted) | Real-time database, auth, file storage |
+| Orchestration | Bun HTTP server | Container lifecycle management |
+| Containerization | Podman / Docker (OCI-compatible) | Agent isolation and resource management. Kubernetes planned. |
+| Agent Runtime | OpenClaw (default, pluggable) | LLM orchestration, tool calling, conversation management. nanobot, ZeroClaw, NanoClaw, PicoClaw, MimiClaw planned. |
+| Desktop | Xvnc + noVNC + OpenBox | Virtual desktop environment for agents |
+| Rendering | markdown-it + Prism.js + temml | Markdown, code, math, and diagram rendering |
+| Package Manager | Bun | Monorepo workspace management and script execution |
+| Build System | TurboRepo | Monorepo task orchestration |
+| Type Checking | tsgo (@typescript/native-preview) | Fast native TypeScript type checking |
+| Linting | oxlint | Fast Rust-based linter |
+
+---
+
+## Monorepo Structure
+
+```
+monokeros/
+  apps/
+    web/                  -- Next.js 15 + TurboPack (port 3000)
+    api/                  -- NestJS 11 (LEGACY, being replaced by Convex)
+  convex/                 -- Convex backend (schema, functions, auth, seed)
+  services/
+    container-service/    -- Bun HTTP server for Docker management (port 3002)
+  docker/
+    openclaw-desktop/        -- Agent container Dockerfile + entrypoint
+    container-service/    -- Container Service Dockerfile
+    web/                  -- Web app Dockerfile
+  packages/
+    types/                -- TypeScript types, manifests, Zod validation
+    constants/            -- Industry presets, status colors, provider catalog
+    ui/                   -- 30+ headless React components
+    utils/                -- Helpers (generateId, formatTimestamp, slugify, cn)
+    mcp/                  -- Model Context Protocol server
+    renderer/             -- Markdown pipeline (Prism, LaTeX, Mermaid, mentions)
+    templates/            -- Workspace templates (law-firm, web-dev-agency, etc.)
+    avatar/               -- SVG avatar generator
+```
+
+All packages use `main: "./src/index.ts"` for source-level imports with no pre-build step required.
 
 ---
 
 ## Related Pages
 
+- [Agents](../core-concepts/agents.md) -- Agent container architecture and lifecycle
+- [Workspaces](../core-concepts/workspaces.md) -- Workspace configuration and multi-tenancy
+- [Chat](../features/chat.md) -- Real-time messaging and streaming
 - [Monorepo Structure](monorepo.md) -- Package dependency graph and tooling
-- [Design Inspirations](inspirations.md) -- Kubernetes, OpenClaw, and Jira/Linear parallels
-- [OpenClaw Service](../technical/daemon.md) -- Agent runtime architecture
-- [WebSocket Protocol](../technical/websocket.md) -- Event format and gateway details
-- [Authentication](../technical/auth.md) -- JWT, API keys, and RBAC details
