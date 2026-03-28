@@ -2,33 +2,11 @@
   "name": "@monokeros/api",
   "version": "0.0.1",
   "private": true,
+  "description": "DEPRECATED — Backend replaced by Convex + services/container-service",
   "scripts": {
-    "dev": "bun --watch src/main.ts",
-    "start": "bun src/main.ts",
-    "build": "bun build src/main.ts --outdir dist --target bun",
+    "dev": "echo 'API replaced by Convex — run bun run convex:dev from root'",
     "lint": "echo 'lint passed'",
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "echo 'typecheck passed'"
   },
-  "dependencies": {
-    "@monokeros/avatar": "workspace:*",
-    "@monokeros/constants": "workspace:*",
-    "@monokeros/mock-data": "workspace:*",
-    "@monokeros/renderer": "workspace:*",
-    "@monokeros/templates": "workspace:*",
-    "@monokeros/types": "workspace:*",
-    "@monokeros/utils": "workspace:*",
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
-    "@nestjs/websockets": "^11.0.0",
-    "grammy": "^1.40.0",
-    "reflect-metadata": "^0.2.0",
-    "puppeteer": "^24.0.0",
-    "rxjs": "^7.8.0",
-    "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@monokeros/config": "workspace:*",
-    "@types/bun": "^1.0.0",
-    "typescript": "^5.7.0"
-  }
+  "dependencies": {}
 }
