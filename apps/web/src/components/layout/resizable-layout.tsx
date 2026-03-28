@@ -1,36 +1,46 @@
-'use client';
+"use client";
 
-import { ReactNode } from 'react';
-import { Panel, Group, Separator, PanelImperativeHandle, Orientation } from 'react-resizable-panels';
-import { useEffect, useState, useCallback } from 'react';
+import { ReactNode } from "react";
+import {
+  Panel,
+  Group,
+  Separator,
+  PanelImperativeHandle,
+  Orientation,
+} from "react-resizable-panels";
+import { useEffect, useState, useCallback } from "react";
 
 /** Custom vertical resize handle */
-function ResizeHandle({ className = '' }: { className?: string }) {
+function ResizeHandle({ className = "" }: { className?: string }) {
   return (
-    <Separator className={`group relative flex items-center justify-center w-px bg-edge hover:bg-blue transition-colors ${className}`}>
+    <Separator
+      className={`group relative flex items-center justify-center w-px bg-edge hover:bg-blue transition-colors ${className}`}
+    >
       <div className="absolute inset-y-0 -left-1 -right-1 z-10 cursor-col-resize" />
     </Separator>
   );
 }
 
 /** Custom horizontal resize handle */
-function HorizontalResizeHandle({ className = '' }: { className?: string }) {
+function HorizontalResizeHandle({ className = "" }: { className?: string }) {
   return (
-    <Separator className={`group relative flex items-center justify-center h-px bg-edge hover:bg-blue transition-colors ${className}`}>
+    <Separator
+      className={`group relative flex items-center justify-center h-px bg-edge hover:bg-blue transition-colors ${className}`}
+    >
       <div className="absolute -top-1 -bottom-1 -left-0 -right-0 z-10 cursor-row-resize" />
     </Separator>
   );
 }
 
 /** Storage key prefix for layout persistence */
-const STORAGE_KEY_PREFIX = 'monokeros-layout-';
+const STORAGE_KEY_PREFIX = "monokeros-layout-";
 
 /** Hook to persist panel layouts to localStorage */
 function useLayoutStorage(id: string) {
   const storageKey = `${STORAGE_KEY_PREFIX}${id}`;
 
   const loadLayout = useCallback(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === "undefined") return undefined;
     try {
       const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : undefined;
@@ -39,14 +49,17 @@ function useLayoutStorage(id: string) {
     }
   }, [storageKey]);
 
-  const saveLayout = useCallback((layout: Record<string, number>) => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(layout));
-    } catch {
-      // Ignore storage errors
-    }
-  }, [storageKey]);
+  const saveLayout = useCallback(
+    (layout: Record<string, number>) => {
+      if (typeof window === "undefined") return;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(layout));
+      } catch {
+        // Ignore storage errors
+      }
+    },
+    [storageKey],
+  );
 
   return { loadLayout, saveLayout };
 }
@@ -92,8 +105,8 @@ export function ResizablePanels({
   rightMinSize = 20,
   rightMaxSize = 40,
   rightVisible = true,
-  layoutId = 'main',
-  className = '',
+  layoutId = "main",
+  className = "",
 }: ResizablePanelsProps) {
   const [panelRef, setPanelRef] = useState<PanelImperativeHandle | null>(null);
   const { loadLayout, saveLayout } = useLayoutStorage(layoutId);
@@ -185,12 +198,12 @@ export function ResizableSplit({
   first,
   firstDefaultSize = 50,
   second,
-  orientation = 'vertical',
+  orientation = "vertical",
   layoutId,
-  className = '',
+  className = "",
 }: ResizableSplitProps) {
-  const { loadLayout, saveLayout } = useLayoutStorage(layoutId ?? 'split');
-  const Handle = orientation === 'horizontal' ? HorizontalResizeHandle : ResizeHandle;
+  const { loadLayout, saveLayout } = useLayoutStorage(layoutId ?? "split");
+  const Handle = orientation === "horizontal" ? HorizontalResizeHandle : ResizeHandle;
 
   return (
     <Group

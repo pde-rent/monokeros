@@ -1,17 +1,21 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button, Input, Textarea, FilterChipGroup, CheckboxGroup } from '@monokeros/ui';
-import { useTeams, useMembers } from '@/hooks/use-queries';
-import { formatLabel } from '@monokeros/utils';
-import type { Project, CreateProjectInput } from '@monokeros/types';
-import { DEFAULT_ENTITY_COLOR, PRESET_COLORS } from '@monokeros/constants';
+import { useState } from "react";
+import {
+  Button,
+  Input,
+  Textarea,
+  FilterChipGroup,
+  CheckboxGroup,
+  ColorPicker,
+} from "@monokeros/ui";
+import { useTeams, useMembers } from "@/hooks/use-queries";
+import { formatLabel } from "@monokeros/utils";
+import type { Project, CreateProjectInput } from "@monokeros/types";
+import { DEFAULT_ENTITY_COLOR } from "@monokeros/constants";
+import { useNameWithSlug } from "@/hooks/use-name-with-slug";
 
-function slugify(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-const KNOWN_TYPES = ['web', 'mobile', 'saas', 'api', 'desktop'];
+const KNOWN_TYPES = ["web", "mobile", "saas", "api", "desktop"];
 
 interface Props {
   initial?: Project;
@@ -24,31 +28,29 @@ export function ProjectForm({ initial, onSubmit, onCancel, isSubmitting }: Props
   const { data: teams } = useTeams();
   const { data: members } = useMembers();
 
-  const agents = members?.filter((m) => m.type === 'agent');
-  const humans = members?.filter((m) => m.type === 'human');
+  const agents = members?.filter((m) => m.type === "agent");
+  const humans = members?.filter((m) => m.type === "human");
 
-  const [name, setName] = useState(initial?.name ?? '');
-  const [slug, setSlug] = useState(initial?.slug ?? '');
-  const [slugTouched, setSlugTouched] = useState(!!initial);
-  const [description, setDescription] = useState(initial?.description ?? '');
+  const { name, slug, handleNameChange, handleSlugChange } = useNameWithSlug(
+    initial ? { name: initial.name, slug: initial.slug } : undefined,
+  );
+  const [description, setDescription] = useState(initial?.description ?? "");
   const [color, setColor] = useState(initial?.color ?? DEFAULT_ENTITY_COLOR);
   const [types, setTypes] = useState<string[]>(initial?.types ?? []);
   const [teamIds, setTeamIds] = useState<string[]>(initial?.assignedTeamIds ?? []);
   const [memberIds, setMemberIds] = useState<string[]>(initial?.assignedMemberIds ?? []);
 
-  function handleNameChange(value: string) {
-    setName(value);
-    if (!slugTouched) setSlug(slugify(value));
-  }
-
-  function handleSlugChange(value: string) {
-    setSlugTouched(true);
-    setSlug(slugify(value));
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmit({ name, slug, description, color, types, assignedTeamIds: teamIds, assignedMemberIds: memberIds });
+    onSubmit({
+      name,
+      slug,
+      description,
+      color,
+      types,
+      assignedTeamIds: teamIds,
+      assignedMemberIds: memberIds,
+    });
   }
 
   return (
@@ -76,21 +78,7 @@ export function ProjectForm({ initial, onSubmit, onCancel, isSubmitting }: Props
         rows={3}
       />
 
-      {/* Color */}
-      <div>
-        <label className="text-xs font-medium text-fg-2">Color</label>
-        <div className="mt-1 flex gap-1.5">
-          {PRESET_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              className={`h-6 w-6 rounded-sm border-2 ${color === c ? 'border-fg' : 'border-transparent'}`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-      </div>
+      <ColorPicker value={color} onChange={setColor} />
 
       {/* Types */}
       <div>
@@ -101,7 +89,7 @@ export function ProjectForm({ initial, onSubmit, onCancel, isSubmitting }: Props
           onChange={setTypes}
           getId={(t) => t}
           getLabel={(t) => formatLabel(t)}
-          getColor={() => 'var(--color-fg-3)'}
+          getColor={() => "var(--color-fg-3)"}
           className="mt-1"
         />
       </div>
@@ -151,11 +139,8 @@ export function ProjectForm({ initial, onSubmit, onCancel, isSubmitting }: Props
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting || !name || !slug || types.length === 0}
-        >
-          {initial ? 'Save' : 'Create'}
+        <Button type="submit" disabled={isSubmitting || !name || !slug || types.length === 0}>
+          {initial ? "Save" : "Create"}
         </Button>
       </div>
     </form>

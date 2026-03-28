@@ -1,20 +1,29 @@
-import { TreeStructureIcon, ListChecksIcon, BriefcaseIcon, ChatCircleIcon, FolderIcon, CrownIcon } from '@phosphor-icons/react';
-import { useTasks } from '@/hooks/use-queries';
-import { useAgencyNavigation } from '@/hooks/use-agency-navigation';
-import { StatusIndicator, Badge, Avatar, PanelSection } from '@monokeros/ui';
-import { TASK_STATUS_LABELS, getTeamColor } from '@monokeros/constants';
-import type { Member, Team } from '@monokeros/types';
-import { NavAction } from './nav-action';
+"use client";
+
+import {
+  TreeStructureIcon,
+  ListChecksIcon,
+  BriefcaseIcon,
+  ChatCircleIcon,
+  FolderIcon,
+  MonitorIcon,
+  CrownIcon,
+} from "@phosphor-icons/react";
+import { useTasks } from "@/hooks/use-queries";
+import { useAgencyNavigation } from "@/hooks/use-agency-navigation";
+import { StatusIndicator, Badge, Avatar, PanelSection } from "@monokeros/ui";
+import { TASK_STATUS_LABELS, getTeamColor } from "@monokeros/constants";
+import type { Member, Team } from "@monokeros/types";
+import { NavAction } from "./nav-action";
+import { formatTokenCount } from "@/lib/format";
 
 export function MemberDetail({ member, team }: { member: Member; team?: Team }) {
   const { data: tasks } = useTasks();
-  const { goToAgentOrg, goToAgentTasks, goToAgentProjects, goToAgentChat, goToAgentFiles } = useAgencyNavigation();
+  const { goToAgentOrg, goToAgentTasks, goToAgentProjects, goToAgentChat, goToAgentFiles, goToAgentBox } =
+    useAgencyNavigation();
 
-  const currentTask = tasks?.find((t) => t.id === member.currentTaskId);
-  const memberTasks = tasks?.filter((t) => t.assigneeIds.includes(member.id)) ?? [];
-  const backlog = memberTasks
-    .filter((t) => t.status !== 'done' && t.id !== member.currentTaskId)
-    .slice(0, 3);
+  const isAgent = member.type === "agent";
+  const hasDesktop = (member as any).desktop ?? ((member as any).runtime !== "zeroclaw");
 
   return (
     <>
@@ -33,25 +42,91 @@ export function MemberDetail({ member, team }: { member: Member; team?: Team }) 
         <div className="mt-1 flex items-center gap-1 text-[10px]">
           <StatusIndicator status={member.status} size="sm" />
           <span className="capitalize text-fg">{member.status}</span>
+          {isAgent && (
+            <Badge className="ml-1 text-[8px] px-1">
+              {hasDesktop ? "Desktop" : "Headless"}
+            </Badge>
+          )}
         </div>
       </PanelSection>
 
-      {/* Team */}
+      <MemberInfo member={member} team={team} tasks={tasks} />
+
+      {/* Navigation actions */}
+      <div className="grid grid-cols-3 border-b border-edge mt-auto">
+        <NavAction
+          icon={<TreeStructureIcon size={14} />}
+          label="Org"
+          onClick={() => goToAgentOrg(member.name)}
+        />
+        <NavAction
+          icon={<ListChecksIcon size={14} />}
+          label="Tasks"
+          onClick={() => goToAgentTasks(member.name)}
+        />
+        <NavAction
+          icon={<BriefcaseIcon size={14} />}
+          label="Projects"
+          onClick={() => goToAgentProjects(member.name)}
+        />
+        <NavAction
+          icon={<ChatCircleIcon size={14} />}
+          label="Chat"
+          onClick={() => goToAgentChat(member.id)}
+        />
+        <NavAction
+          icon={<FolderIcon size={14} />}
+          label="Files"
+          onClick={() => goToAgentFiles(member.id)}
+        />
+        {isAgent && hasDesktop && (
+          <NavAction
+            icon={<MonitorIcon size={14} />}
+            label="Box"
+            onClick={() => goToAgentBox(member.id)}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+function MemberInfo({
+  member,
+  team,
+  tasks,
+}: {
+  member: Member;
+  team?: Team;
+  tasks?: Array<{ id: string; title: string; status: string; assigneeIds: string[] }>;
+}) {
+  const currentTask = tasks?.find((t) => t.id === member.currentTaskId);
+  const backlog = (
+    tasks?.filter(
+      (t) =>
+        t.assigneeIds.includes(member.id) && t.status !== "done" && t.id !== member.currentTaskId,
+    ) ?? []
+  ).slice(0, 3);
+
+  return (
+    <>
       {team && (
         <PanelSection title="Team">
-          <div className="text-[10px]" style={{ color: team.color }}>{team.name}</div>
+          <div className="text-[10px]" style={{ color: team.color }}>
+            {team.name}
+          </div>
         </PanelSection>
       )}
 
-      {/* Current task */}
       {currentTask && (
         <PanelSection title="Current Task">
           <div className="text-[10px] font-medium text-fg">{currentTask.title}</div>
-          <div className="text-[9px] text-fg-2">{TASK_STATUS_LABELS[currentTask.status]}</div>
+          <div className="text-[9px] text-fg-2">
+            {TASK_STATUS_LABELS[currentTask.status as keyof typeof TASK_STATUS_LABELS]}
+          </div>
         </PanelSection>
       )}
 
-      {/* Queued tasks */}
       {backlog.length > 0 && (
         <PanelSection title={`Queued (${backlog.length})`}>
           <div className="space-y-0.5">
@@ -64,7 +139,6 @@ export function MemberDetail({ member, team }: { member: Member; team?: Team }) 
         </PanelSection>
       )}
 
-      {/* Identity / Soul */}
       {member.identity && (
         <PanelSection title="Identity">
           <p className="text-[9px] text-fg leading-relaxed italic">
@@ -73,7 +147,6 @@ export function MemberDetail({ member, team }: { member: Member; team?: Team }) 
         </PanelSection>
       )}
 
-      {/* Skills */}
       {member.identity && (
         <PanelSection title="Skills">
           <div className="flex flex-wrap gap-0.5">
@@ -86,18 +159,18 @@ export function MemberDetail({ member, team }: { member: Member; team?: Team }) 
         </PanelSection>
       )}
 
-      {/* Memory */}
       {member.identity && member.identity.memory.length > 0 && (
         <PanelSection title="Memory">
           <ul className="space-y-0.5">
             {member.identity.memory.map((mem, i) => (
-              <li key={i} className="text-[8px] text-fg-2">&bull; {mem}</li>
+              <li key={i} className="text-[8px] text-fg-2">
+                &bull; {mem}
+              </li>
             ))}
           </ul>
         </PanelSection>
       )}
 
-      {/* Stats */}
       <PanelSection title="Stats">
         <div className="grid grid-cols-3 gap-1 text-center">
           <div>
@@ -113,16 +186,23 @@ export function MemberDetail({ member, team }: { member: Member; team?: Team }) 
             <div className="text-[8px] text-fg-2">Projects</div>
           </div>
         </div>
+        {(member.stats.totalTokens ?? 0) > 0 && (
+          <div className="mt-2 grid grid-cols-2 gap-1 border-t border-edge pt-2 text-center">
+            <div>
+              <div className="text-sm font-semibold text-fg">
+                {formatTokenCount(member.stats.totalTokens!)}
+              </div>
+              <div className="text-[8px] text-fg-2">Tokens</div>
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-fg">
+                ${(member.stats.totalCostUsd ?? 0).toFixed(2)}
+              </div>
+              <div className="text-[8px] text-fg-2">Est. Cost</div>
+            </div>
+          </div>
+        )}
       </PanelSection>
-
-      {/* Navigation actions */}
-      <div className="grid grid-cols-5 border-b border-edge">
-        <NavAction icon={<TreeStructureIcon size={14} />} label="Org" onClick={() => goToAgentOrg(member.name)} />
-        <NavAction icon={<ListChecksIcon size={14} />} label="Tasks" onClick={() => goToAgentTasks(member.name)} />
-        <NavAction icon={<BriefcaseIcon size={14} />} label="Projects" onClick={() => goToAgentProjects(member.name)} />
-        <NavAction icon={<ChatCircleIcon size={14} />} label="Chat" onClick={() => goToAgentChat(member.id)} />
-        <NavAction icon={<FolderIcon size={14} />} label="Files" onClick={() => goToAgentFiles(member.id)} />
-      </div>
     </>
   );
 }

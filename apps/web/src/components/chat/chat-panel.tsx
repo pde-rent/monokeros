@@ -1,64 +1,74 @@
-'use client';
+"use client";
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
-import { useConversation, useSendMessage, useSetReaction, useMembers, useTeams, useProjects, useTasks, useDrives } from '@/hooks/use-queries';
-import { useChatStore } from '@/stores/chat-store';
-import { useChatSocket } from '@/hooks/use-chat-socket';
-import { useMentions } from '@/hooks/use-mentions';
-import { useDragDrop } from '@/hooks/use-drag-drop';
-import type { MentionSuggestion } from '@/hooks/use-mentions';
-import { MentionDropdown } from './mention-dropdown';
-import { MentionHydrator } from './mention-hydrator';
-import { renderMarkdown } from '@monokeros/renderer';
-import { MessageRole, MessageReferenceType, FileEntryType } from '@monokeros/types';
-import type { ChatMessage, MessageAttachment, FileEntry, MessageReaction } from '@monokeros/types';
-import type { ToolCallStatus } from '@/stores/chat-store';
-import { MessageBubble, MessageListRow, DropzoneOverlay, PendingFileBadge, MessageActions, MessageReactions } from '@monokeros/ui';
-import { getTeamColor } from '@monokeros/constants';
-import { formatTimestamp } from '@monokeros/utils';
-import { AttachmentPreview } from './attachment-preview';
-import { usePendingFiles } from './attachment-upload';
-import { FilePreviewModal } from './file-preview-modal';
-import { PaperclipIcon, PaperPlaneIcon, ArrowDownIcon } from '@phosphor-icons/react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import {
+  useConversation,
+  useSendMessage,
+  useSetReaction,
+  useMembers,
+  useTeams,
+  useProjects,
+  useTasks,
+  useDrives,
+} from "@/hooks/use-queries";
+import { useWorkspaceId } from "@/hooks/use-workspace";
+import { useChatStore } from "@/stores/chat-store";
+import { useChatStream } from "@/hooks/use-chat-stream";
+import { useMentions } from "@/hooks/use-mentions";
+import { useDragDrop } from "@/hooks/use-drag-drop";
+import type { MentionSuggestion } from "@/hooks/use-mentions";
+import { MentionDropdown } from "./mention-dropdown";
+import { MentionHydrator } from "./mention-hydrator";
+import { MessageRole, MessageReferenceType, FileEntryType } from "@monokeros/types";
+import type { ChatMessage, FileEntry } from "@monokeros/types";
+import {
+  MessageBubble,
+  MessageListRow,
+  DropzoneOverlay,
+  PendingFileBadge,
+} from "@monokeros/ui";
+import { getTeamColor } from "@monokeros/constants";
+import { FilePreviewModal } from "./file-preview-modal";
+import { PaperclipIcon, PaperPlaneIcon, ArrowDownIcon } from "@phosphor-icons/react";
+import { TOOL_LABELS, PHASE_LABELS } from "./chat-constants";
+import { Message, renderContent } from "./chat-message";
+import { ThinkingIndicator, SmoothStreamingMessage } from "./chat-streaming";
 
-// Human-friendly labels for daemon-reported tool names
-const TOOL_LABELS: Record<string, string> = {
-  web_search: 'Searching the web',
-  web_read: 'Reading a page',
-  file_read: 'Reading a file',
-  file_write: 'Writing a file',
-  list_drives: 'Browsing drives',
-  knowledge_search: 'Searching knowledge',
-  create_team: 'Creating team',
-  create_member: 'Creating member',
-  update_team: 'Updating team',
-  create_project: 'Creating project',
-  update_workspace: 'Updating workspace',
-  create_task: 'Creating task',
-  assign_task: 'Assigning task',
-  move_task: 'Moving task',
-  update_task: 'Updating task',
-  list_tasks: 'Listing tasks',
-  list_members: 'Listing members',
-  list_teams: 'Listing teams',
-  list_projects: 'Listing projects',
-  update_project: 'Updating project',
-  update_gate: 'Updating gate',
-  delegate_to_keros: 'Delegating to Keros',
-};
+interface PendingFile {
+  file: File;
+  id: string;
+}
 
-// Phase labels for daemon-reported thinking phases
-const PHASE_LABELS: Record<string, string> = {
-  thinking: 'Thinking',
-  reflecting: 'Reflecting',
-};
+function usePendingFiles() {
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  let counter = 0;
+
+  const addFiles = useCallback((files: File[]) => {
+    const newPending = files.map((file) => ({
+      file,
+      id: `pending_${Date.now()}_${counter++}`,
+    }));
+    setPendingFiles((prev) => [...prev, ...newPending]);
+  }, []);
+
+  const removeFile = useCallback((id: string) => {
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+
+  const clear = useCallback(() => setPendingFiles([]), []);
+
+  return { pendingFiles, addFiles, removeFile, clear };
+}
 
 interface Props {
   conversationId: string;
 }
 
 /** Collect all file names from a drive listing for mention suggestions */
-function collectFileNames(entries: FileEntry[], acc: MentionSuggestion[] = []): MentionSuggestion[] {
+function collectFileNames(
+  entries: FileEntry[],
+  acc: MentionSuggestion[] = [],
+): MentionSuggestion[] {
   for (const entry of entries) {
     if (entry.type === FileEntryType.FILE) {
       acc.push({
@@ -67,7 +77,7 @@ function collectFileNames(entries: FileEntry[], acc: MentionSuggestion[] = []): 
         secondary: entry.path,
         type: MessageReferenceType.FILE,
         display: entry.name,
-        color: 'var(--color-purple)',
+        color: "var(--color-purple)",
       });
     }
     if (entry.children) {
@@ -77,13 +87,70 @@ function collectFileNames(entries: FileEntry[], acc: MentionSuggestion[] = []): 
   return acc;
 }
 
+/**
+ * Resolve which agent should respond to a message.
+ *
+ * Priority:
+ * 1. First @mentioned agent in the message references
+ * 2. Lead participant (isLead === true)
+ * 3. System participant (system === true)
+ * 4. First non-"user" participant
+ */
+/**
+ * Resolve which agents should respond to a message.
+ * Returns ALL @mentioned agent participants, or falls back to one (lead → system → first).
+ */
+function resolveTargetAgents(
+  conversation: { participantIds: string[] } | null | undefined,
+  references: Array<{ type: string; id: string; display: string }>,
+  memberList: Array<{ id: string; isLead: boolean; system: boolean; type: string }> | undefined,
+): string[] {
+  if (!conversation) return [];
+  const participantIds = conversation.participantIds ?? [];
+
+  // 1. If message @mentions agent participants, route to ALL of them (in mention order)
+  const mentionedAgents = references
+    .filter((r) => r.type === "agent" && participantIds.includes(r.id))
+    .map((r) => r.id);
+  // Deduplicate while preserving order
+  const uniqueMentioned = [...new Set(mentionedAgents)];
+  if (uniqueMentioned.length > 0) return uniqueMentioned;
+
+  // 2. Among agent participants, prefer lead → system → first
+  const agentParticipants = participantIds.filter((id) => id !== "user");
+  if (agentParticipants.length === 0) return [];
+  if (agentParticipants.length === 1) return [agentParticipants[0]];
+
+  if (memberList) {
+    const participantMembers = agentParticipants
+      .map((id) => memberList.find((m) => m.id === id))
+      .filter(Boolean) as typeof memberList;
+
+    const lead = participantMembers.find((m) => m.isLead);
+    if (lead) return [lead.id];
+
+    const system = participantMembers.find((m) => m.system);
+    if (system) return [system.id];
+  }
+
+  return [agentParticipants[0]];
+}
+
 export function ChatPanel({ conversationId }: Props) {
+  const wid = useWorkspaceId();
   const { data: conversation } = useConversation(conversationId);
   const sendMessage = useSendMessage();
   const setReaction = useSetReaction();
-  const { streamingConversationId, streamingContent, thinkingPhase, activeToolCalls, completedToolCalls, chatViewMode } = useChatStore();
-  const [input, setInput] = useState('');
-  const [previewAttachment, setPreviewAttachment] = useState<MessageAttachment | null>(null);
+  const {
+    streamingConversationId,
+    streamingContent,
+    thinkingPhase,
+    activeToolCalls,
+    completedToolCalls,
+    chatViewMode,
+  } = useChatStore();
+  const [input, setInput] = useState("");
+  const [previewAttachment, setPreviewAttachment] = useState<import("@monokeros/types").MessageAttachment | null>(null);
   const [mentionsActive, setMentionsActive] = useState(false);
   const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
@@ -94,8 +161,8 @@ export function ChatPanel({ conversationId }: Props) {
   const { pendingFiles, addFiles, removeFile, clear: clearFiles } = usePendingFiles();
   const { dragOver, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(addFiles);
 
-  // WebSocket connection for real-time streaming
-  useChatSocket(conversationId);
+  // NDJSON stream for real-time agent responses (replaces WebSocket)
+  const chatStream = useChatStream();
 
   // Track scroll position to show/hide scroll-to-bottom button
   useEffect(() => {
@@ -105,12 +172,12 @@ export function ChatPanel({ conversationId }: Props) {
       const { scrollTop, scrollHeight, clientHeight } = container;
       setShowScrollDown(scrollHeight - scrollTop - clientHeight > 100);
     };
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => container.removeEventListener('scroll', onScroll);
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   const isStreaming = streamingConversationId === conversationId;
@@ -124,7 +191,7 @@ export function ChatPanel({ conversationId }: Props) {
     if (thinkingPhase) {
       return PHASE_LABELS[thinkingPhase] ?? thinkingPhase;
     }
-    return 'Thinking';
+    return "Thinking";
   }, [thinkingPhase, activeToolCalls]);
 
   // Clear pending message when server confirms it
@@ -161,7 +228,7 @@ export function ChatPanel({ conversationId }: Props) {
         label: m.name,
         secondary: m.title,
         type: MessageReferenceType.AGENT,
-        display: m.name.replace(/\s+/g, '-'),
+        display: m.name.replace(/\s+/g, "-"),
         color: getTeamColor(team),
       };
     });
@@ -171,8 +238,8 @@ export function ChatPanel({ conversationId }: Props) {
       label: p.name,
       secondary: p.name,
       type: MessageReferenceType.PROJECT,
-      display: p.name.replace(/\s+/g, '-'),
-      color: 'var(--color-green)',
+      display: p.name.replace(/\s+/g, "-"),
+      color: "var(--color-green)",
     }));
 
     const taskPool: MentionSuggestion[] = (tasks ?? []).map((t) => ({
@@ -181,13 +248,13 @@ export function ChatPanel({ conversationId }: Props) {
       secondary: t.id,
       type: MessageReferenceType.TASK,
       display: t.id,
-      color: 'var(--color-orange)',
+      color: "var(--color-orange)",
     }));
 
     const filePool: MentionSuggestion[] = [];
     if (drives) {
-      for (const d of drives.teamDrives) collectFileNames(d.files, filePool);
-      for (const d of drives.memberDrives) collectFileNames(d.files, filePool);
+      for (const d of drives.teamDrives) if (d.files) collectFileNames(d.files, filePool);
+      for (const d of drives.memberDrives) if (d.files) collectFileNames(d.files, filePool);
     }
 
     return { agents: memberPool, projects: projectPool, tasks: taskPool, files: filePool };
@@ -199,7 +266,7 @@ export function ChatPanel({ conversationId }: Props) {
   const isWaiting = (sendMessage.isPending || waitingForAgent) && !isStreaming;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, streamingContent, pendingUserMessage]);
 
   function handleSubmit(e: { preventDefault(): void }) {
@@ -209,12 +276,36 @@ export function ChatPanel({ conversationId }: Props) {
     const references = mentions.extractReferences(content);
     // Show pending user message immediately
     setPendingUserMessage(content);
-    sendMessage.mutate({ conversationId, content, references });
-    setInput('');
+    // Persist user message to Convex
+    sendMessage.mutate({
+      workspaceId: wid as any,
+      conversationId: conversationId as any,
+      content,
+      references,
+    });
+    // Multi-agent routing: all @mentioned agents respond sequentially,
+    // falling back to lead/system/first agent
+    const agentIds = resolveTargetAgents(conversation, references, members);
+    const streamSequentially = async () => {
+      for (const agentId of agentIds) {
+        try {
+          await chatStream.sendMessage({
+            conversationId,
+            agentId,
+            message: content,
+          });
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[chat-panel] Stream error for agent", agentId, err);
+        }
+      }
+    };
+    streamSequentially();
+    setInput("");
     clearFiles();
     // Reset textarea height after clearing
     if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = "auto";
     }
   }
 
@@ -232,13 +323,13 @@ export function ChatPanel({ conversationId }: Props) {
   }
 
   function autoResizeTextarea(el: HTMLTextAreaElement) {
-    el.style.height = 'auto';
+    el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 100)}px`;
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent) {
     const consumed = mentions.handleKeyDown(e);
-    if (consumed && (e.key === 'Tab' || e.key === 'Enter') && mentions.currentSuggestion) {
+    if (consumed && (e.key === "Tab" || e.key === "Enter") && mentions.currentSuggestion) {
       const { text, cursorPos } = mentions.acceptSuggestion(input, mentions.currentSuggestion);
       setInput(text);
       // Set cursor position after React re-render
@@ -248,7 +339,7 @@ export function ChatPanel({ conversationId }: Props) {
       return;
     }
     // Enter sends, Shift+Enter inserts newline
-    if (e.key === 'Enter' && !e.shiftKey && !consumed) {
+    if (e.key === "Enter" && !e.shiftKey && !consumed) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -279,20 +370,16 @@ export function ChatPanel({ conversationId }: Props) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const handleReact = useCallback((messageId: string, emoji: string) => {
-    // Find current reaction state for this emoji
-    const currentReactions = messagesRef.current.find((m) => m.id === messageId)?.reactions ?? [];
-    const existing = currentReactions.find((r) => r.emoji === emoji);
-    const reacted = existing?.reacted ?? false;
-
-    // Toggle reaction: if reacted, unreact; if not reacted, react
-    setReaction.mutate({
-      conversationId,
-      messageId,
-      emoji,
-      reacted: !reacted,
-    });
-  }, [conversationId, setReaction]);
+  const handleReact = useCallback(
+    (messageId: string, emoji: string) => {
+      setReaction.mutate({
+        workspaceId: wid as any,
+        messageId: messageId as any,
+        emoji,
+      });
+    },
+    [conversationId, setReaction],
+  );
 
   return (
     <div
@@ -306,50 +393,57 @@ export function ChatPanel({ conversationId }: Props) {
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto text-sm">
-          <div className={chatViewMode === 'bubbles' ? 'mx-auto max-w-3xl space-y-4 p-4' : ''}>
-            {messages.map((msg) => (
-              <Message
-                key={msg.id}
-                message={msg}
-                reactions={msg.reactions ?? []}
-                layout={chatViewMode}
-                onPreviewAttachment={setPreviewAttachment}
-                onCopy={() => handleCopy(msg)}
-                onReply={() => handleReply(msg)}
-                onForward={() => handleForward(msg)}
-                onReact={(emoji) => handleReact(msg.id, emoji)}
-              />
+        <div className={chatViewMode === "bubbles" ? "mx-auto max-w-3xl space-y-4 p-4" : ""}>
+          {messages.map((msg) => (
+            <Message
+              key={msg.id}
+              message={msg}
+              reactions={msg.reactions ?? []}
+              layout={chatViewMode}
+              onPreviewAttachment={setPreviewAttachment}
+              onCopy={() => handleCopy(msg)}
+              onReply={() => handleReply(msg)}
+              onForward={() => handleForward(msg)}
+              onReact={(emoji) => handleReact(msg.id, emoji)}
+            />
+          ))}
+
+          {/* Pending user message (shown immediately while waiting for server) */}
+          {pendingUserMessage &&
+            (chatViewMode === "bubbles" ? (
+              <MessageBubble variant="user">
+                <span className="whitespace-pre-wrap break-words">
+                  {renderContent(pendingUserMessage)}
+                </span>
+                <div className="mt-1 text-xs text-blue">Sending...</div>
+              </MessageBubble>
+            ) : (
+              <MessageListRow isUser timestamp="Sending...">
+                <span className="whitespace-pre-wrap break-words">
+                  {renderContent(pendingUserMessage)}
+                </span>
+              </MessageListRow>
             ))}
 
-            {/* Pending user message (shown immediately while waiting for server) */}
-            {pendingUserMessage && (
-              chatViewMode === 'bubbles' ? (
-                <MessageBubble variant="user">
-                  <span className="whitespace-pre-wrap break-words">{renderContent(pendingUserMessage)}</span>
-                  <div className="mt-1 text-xs text-blue">Sending...</div>
-                </MessageBubble>
-              ) : (
-                <MessageListRow isUser timestamp="Sending...">
-                  <span className="whitespace-pre-wrap break-words">{renderContent(pendingUserMessage)}</span>
-                </MessageListRow>
-              )
-            )}
+          {/* Thinking indicator with daemon-reported status */}
+          {(isWaiting || (isStreaming && !streamingContent)) && (
+            <ThinkingIndicator
+              status={thinkingDisplayText}
+              layout={chatViewMode}
+              completedTools={completedToolCalls}
+            />
+          )}
 
-            {/* Thinking indicator with daemon-reported status */}
-            {(isWaiting || (isStreaming && !streamingContent)) && (
-              <ThinkingIndicator
-                status={thinkingDisplayText}
-                layout={chatViewMode}
-                completedTools={completedToolCalls}
-              />
-            )}
+          {isStreaming && streamingContent && (
+            <SmoothStreamingMessage
+              content={streamingContent}
+              layout={chatViewMode}
+              completedTools={completedToolCalls}
+            />
+          )}
 
-            {isStreaming && streamingContent && (
-              <SmoothStreamingMessage content={streamingContent} layout={chatViewMode} completedTools={completedToolCalls} />
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Mention hydrator - makes @agent, #project, ~task, :file mentions clickable */}
@@ -388,8 +482,8 @@ export function ChatPanel({ conversationId }: Props) {
               type="button"
               className="self-start shrink-0 p-2.5 text-fg-3 hover:text-fg transition-colors"
               onClick={() => {
-                const el = document.createElement('input');
-                el.type = 'file';
+                const el = document.createElement("input");
+                el.type = "file";
                 el.multiple = true;
                 el.onchange = (e) => {
                   const files = Array.from((e.target as HTMLInputElement).files ?? []);
@@ -411,7 +505,7 @@ export function ChatPanel({ conversationId }: Props) {
               placeholder="Type a message... (@ agents, # projects, ~ tasks, : files)"
               rows={1}
               className="flex-1 resize-none bg-transparent py-2.5 text-sm text-fg placeholder-fg-3 outline-none"
-              style={{ minHeight: '38px', maxHeight: '100px' }}
+              style={{ minHeight: "38px", maxHeight: "100px" }}
             />
 
             {/* Send button - bottom-right */}
@@ -446,307 +540,6 @@ export function ChatPanel({ conversationId }: Props) {
           onClose={() => setPreviewAttachment(null)}
         />
       )}
-    </div>
-  );
-}
-
-const Message = React.memo(function Message({
-  message,
-  reactions,
-  layout,
-  onPreviewAttachment,
-  onCopy,
-  onReply,
-  onForward,
-  onReact,
-}: {
-  message: ChatMessage;
-  reactions: MessageReaction[];
-  layout: 'bubbles' | 'list';
-  onPreviewAttachment: (att: MessageAttachment) => void;
-  onCopy: () => void;
-  onReply: () => void;
-  onForward: () => void;
-  onReact: (emoji: string) => void;
-}) {
-  const isUser = message.role === MessageRole.USER;
-  const isSystem = message.role === MessageRole.SYSTEM;
-  const attachments = message.attachments ?? [];
-
-  if (isSystem) {
-    return layout === 'bubbles' ? (
-      <div className="text-center text-xs text-fg-3">
-        {message.content}
-      </div>
-    ) : (
-      <div className="section-border px-4 py-1.5 text-center text-xs text-fg-3 bg-surface-3">
-        {message.content}
-      </div>
-    );
-  }
-
-  // Render content: use renderedHtml for agent messages, plain text with mentions for user
-  const contentElement = !isUser && message.renderedHtml ? (
-    <div
-      className="rendered-markdown"
-      dangerouslySetInnerHTML={{ __html: message.renderedHtml }}
-    />
-  ) : (
-    <span className="whitespace-pre-wrap break-words">{renderContent(message.content)}</span>
-  );
-
-  if (layout === 'bubbles') {
-    if (isUser) {
-      return (
-        <MessageBubble
-          variant="user"
-          reactions={reactions}
-          onCopy={onCopy}
-          onReply={onReply}
-          onForward={onForward}
-          onReact={onReact}
-        >
-          {contentElement}
-          {attachments.length > 0 && (
-            <div className="flex flex-col gap-1">
-              {attachments.map((att) => (
-                <AttachmentPreview key={att.id} attachment={att} onPreview={onPreviewAttachment} />
-              ))}
-            </div>
-          )}
-          <div className="mt-1 text-xs text-blue">
-            {formatTimestamp(message.timestamp)}
-          </div>
-        </MessageBubble>
-      );
-    }
-
-    // Assistant: plain inline markdown, no bubble
-    return (
-      <div className="group relative max-w-[80%]">
-        {/* Hover actions toolbar */}
-        <MessageActions
-          onCopy={onCopy}
-          onReply={onReply}
-          onForward={onForward}
-          onReact={onReact}
-          className="-right-2 bottom-0"
-        />
-        {contentElement}
-        {attachments.length > 0 && (
-          <div className="flex flex-col gap-1 mt-1">
-            {attachments.map((att) => (
-              <AttachmentPreview key={att.id} attachment={att} onPreview={onPreviewAttachment} />
-            ))}
-          </div>
-        )}
-        <div className="mt-1 text-xs text-fg-3">
-          {formatTimestamp(message.timestamp)}
-        </div>
-        {/* Reactions */}
-        {reactions.length > 0 && onReact && (
-          <div className="flex justify-start -mt-1">
-            <MessageReactions reactions={reactions} onReact={onReact} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // List layout with MessageListRow
-  return (
-    <MessageListRow
-      isUser={isUser}
-      timestamp={formatTimestamp(message.timestamp)}
-      reactions={reactions}
-      onCopy={onCopy}
-      onReply={onReply}
-      onForward={onForward}
-      onReact={onReact}
-    >
-      {contentElement}
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-1">
-          {attachments.map((att) => (
-            <AttachmentPreview key={att.id} attachment={att} onPreview={onPreviewAttachment} />
-          ))}
-        </div>
-      )}
-    </MessageListRow>
-  );
-});
-
-const MENTION_TYPE_MAP: Record<string, { type: string; className: string }> = {
-  '@': { type: 'agent', className: 'text-blue' },
-  '#': { type: 'project', className: 'text-green' },
-  '~': { type: 'task', className: 'text-orange' },
-  ':': { type: 'file', className: 'text-purple' },
-};
-
-function renderContent(content: string) {
-  // Highlight @mentions, #projects, ~tasks, :files
-  const parts = content.split(/([@#~:]\w[\w.-]*)/g);
-  return parts.map((part, i) => {
-    const prefix = part[0];
-    const meta = MENTION_TYPE_MAP[prefix];
-    if (meta) {
-      const name = part.slice(1);
-      return (
-        <span
-          key={i}
-          className={`mention cursor-pointer font-semibold ${meta.className} hover:underline`}
-          data-mention-type={meta.type}
-          data-mention-name={name}
-        >
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
-}
-
-/** Inline chips showing completed tool calls */
-function CompletedToolChips({ tools }: { tools: ToolCallStatus[] }) {
-  if (tools.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-1 mt-1.5">
-      {tools.map((t) => (
-        <span
-          key={t.id}
-          className="inline-flex items-center gap-1 rounded-sm bg-surface-3 px-1.5 py-0.5 text-[9px] text-fg-3 font-mono"
-        >
-          {TOOL_LABELS[t.name] ?? t.name}
-          {t.durationMs !== null && t.durationMs !== undefined && (
-            <span className="text-fg-3/60">{(t.durationMs / 1000).toFixed(1)}s</span>
-          )}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// Thinking indicator with daemon-reported status text
-function ThinkingIndicator({ status, layout, completedTools }: { status: string; layout: 'bubbles' | 'list'; completedTools: ToolCallStatus[] }) {
-  const [visible, setVisible] = useState(true);
-  const [currentStatus, setCurrentStatus] = useState(status);
-
-  // Animate status text fade in/out
-  useEffect(() => {
-    setVisible(false);
-    const fadeOutTimer = setTimeout(() => {
-      setCurrentStatus(status);
-      setVisible(true);
-    }, 200);
-    return () => clearTimeout(fadeOutTimer);
-  }, [status]);
-
-  const indicator = (
-    <>
-      <div className="flex items-center gap-2 px-1 py-0.5">
-        <div className="h-3 w-3 animate-spin rounded-full border-2 border-fg-3 border-t-transparent" />
-        <span
-          className={`text-xs text-fg-2 transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
-        >
-          {currentStatus}...
-        </span>
-      </div>
-      <CompletedToolChips tools={completedTools} />
-    </>
-  );
-
-  if (layout === 'bubbles') {
-    return <div className="max-w-[80%]">{indicator}</div>;
-  }
-
-  return (
-    <div className="flex items-start gap-3 section-border px-4 py-2 bg-surface">
-      <span className="shrink-0 text-xs font-medium text-fg-3 w-16">Agent</span>
-      <div>{indicator}</div>
-    </div>
-  );
-}
-
-/** Smooth streaming: reveals content character-by-character using rAF */
-function SmoothStreamingMessage({ content, layout, completedTools }: { content: string; layout: 'bubbles' | 'list'; completedTools: ToolCallStatus[] }) {
-  const rendered = useMemo(() => renderMarkdown(content), [content]);
-  const fullHtml = rendered.html;
-  const [displayedLength, setDisplayedLength] = useState(0);
-  const targetLengthRef = useRef(fullHtml.length);
-  const rafRef = useRef<number>(0);
-  const lastFrameRef = useRef(0);
-
-  // Update target whenever new content arrives
-  useEffect(() => {
-    targetLengthRef.current = fullHtml.length;
-  }, [fullHtml]);
-
-  // rAF loop to reveal characters
-  useEffect(() => {
-    const step = (timestamp: number) => {
-      if (!lastFrameRef.current) lastFrameRef.current = timestamp;
-      const elapsed = timestamp - lastFrameRef.current;
-      // Reveal ~1 char per 5ms
-      const charsToReveal = Math.max(1, Math.floor(elapsed / 5));
-
-      setDisplayedLength((prev) => {
-        const next = Math.min(prev + charsToReveal, targetLengthRef.current);
-        if (next < targetLengthRef.current) {
-          lastFrameRef.current = timestamp;
-          rafRef.current = requestAnimationFrame(step);
-        }
-        return next;
-      });
-    };
-
-    rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  // When new content arrives and we've caught up, resume animation
-  useEffect(() => {
-    if (displayedLength < fullHtml.length) {
-      lastFrameRef.current = 0;
-      rafRef.current = requestAnimationFrame(function step(timestamp) {
-        if (!lastFrameRef.current) lastFrameRef.current = timestamp;
-        const elapsed = timestamp - lastFrameRef.current;
-        const charsToReveal = Math.max(1, Math.floor(elapsed / 5));
-        setDisplayedLength((prev) => {
-          const next = Math.min(prev + charsToReveal, targetLengthRef.current);
-          if (next < targetLengthRef.current) {
-            lastFrameRef.current = timestamp;
-            rafRef.current = requestAnimationFrame(step);
-          }
-          return next;
-        });
-      });
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [fullHtml.length]);
-
-  const visibleHtml = fullHtml.slice(0, displayedLength);
-
-  const inner = (
-    <>
-      <CompletedToolChips tools={completedTools} />
-      <div
-        className="rendered-markdown"
-        dangerouslySetInnerHTML={{ __html: visibleHtml }}
-      />
-      {displayedLength < fullHtml.length && (
-        <span className="animate-pulse">&#x2588;</span>
-      )}
-    </>
-  );
-
-  if (layout === 'bubbles') {
-    return <div className="max-w-[80%]">{inner}</div>;
-  }
-
-  return (
-    <div className="flex items-start gap-3 section-border px-4 py-2 bg-surface">
-      <span className="shrink-0 text-xs font-medium text-fg-3 w-16">Agent</span>
-      <div className="min-w-0 flex-1 text-xs text-fg">{inner}</div>
     </div>
   );
 }

@@ -1,19 +1,48 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth-store';
-import { Button, Input, Card } from '@monokeros/ui';
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useConvexAuth } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Button, Input, Card } from "@monokeros/ui";
+
+/* ── Auto-login for local development ──────────────────── */
+
+const DEV_EMAIL = "dev@local";
+const DEV_PASSWORD = "localdev";
+const AUTO_LOGIN_BYPASS_KEY = "auto_login_bypassed";
+
+function isLocalhost(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "::1";
+}
+
+function isAutoLoginEnabled(): boolean {
+  return isLocalhost() && process.env.NODE_ENV === "development";
+}
 
 /* ── Inline SVG icons for OAuth providers ────────────────── */
 
 function GoogleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 0 0 1 12c0 1.94.46 3.77 1.18 5.07l3.66-2.98z" fill="#FBBC05" />
-      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11.96 11.96 0 0 0 1 12c0 1.94.46 3.77 1.18 5.07l3.66-2.98z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
     </svg>
   );
 }
@@ -74,25 +103,110 @@ function Divider() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { signIn } = useAuthActions();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Auto-login state
+  const [autoLoginState, setAutoLoginState] = useState<
+    "checking" | "attempting" | "failed" | "bypassed" | "off"
+  >("checking");
+
+  const attemptAutoLogin = useCallback(async () => {
+    setAutoLoginState("attempting");
+    try {
+      // Try sign-in first (account already exists)
+      await signIn("password", { email: DEV_EMAIL, password: DEV_PASSWORD, flow: "signIn" });
+      router.push("/");
+    } catch {
+      try {
+        // Account doesn't exist yet — create it via sign-up
+        await signIn("password", { email: DEV_EMAIL, password: DEV_PASSWORD, flow: "signUp" });
+        router.push("/");
+      } catch (signUpErr) {
+        console.warn("[dev] Auto-login failed:", signUpErr);
+        setAutoLoginState("failed");
+        setError("Auto-login failed. Sign in manually or run: bunx convex run seed:run");
+      }
+    }
+  }, [signIn, router]);
+
+  // Decide whether to auto-login on mount
+  useEffect(() => {
+    if (authLoading) return;
+
+    // Already authenticated — go to workspace selector
+    if (isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    if (!isAutoLoginEnabled()) {
+      setAutoLoginState("off");
+      return;
+    }
+
+    const bypassed = localStorage.getItem(AUTO_LOGIN_BYPASS_KEY) === "true";
+    if (bypassed) {
+      setAutoLoginState("bypassed");
+      return;
+    }
+
+    void attemptAutoLogin();
+  }, [authLoading, isAuthenticated, router, attemptAutoLogin]);
+
+  function handleBypass() {
+    localStorage.setItem(AUTO_LOGIN_BYPASS_KEY, "true");
+    setAutoLoginState("bypassed");
+    setError("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
-      await login(email, password);
-      router.push('/');
+      await signIn("password", { email, password, flow: "signIn" });
+      // Clear bypass on successful manual login so auto-login resumes next time
+      localStorage.removeItem(AUTO_LOGIN_BYPASS_KEY);
+      router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
   }
+
+  // Show loading state while auto-login is in progress
+  if (autoLoginState === "checking" || autoLoginState === "attempting") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <Card className="w-full max-w-sm p-8 shadow-md">
+          <div className="flex flex-col items-center gap-4">
+            <img src="/icons/logo.svg" alt="MonokerOS" className="h-20 w-20" />
+            <h1 className="text-xl font-bold tracking-tight font-display text-fg">
+              Monoker<span className="text-blue">OS</span>
+            </h1>
+            <p className="text-xs text-fg-2">
+              {autoLoginState === "checking" ? "Loading..." : `Signing in as ${DEV_EMAIL}...`}
+            </p>
+            <button
+              type="button"
+              onClick={handleBypass}
+              className="text-xs text-fg-3 underline hover:text-fg-2"
+            >
+              Use different account
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  const showAutoLoginBanner = autoLoginState === "failed" || autoLoginState === "bypassed";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas">
@@ -100,13 +214,33 @@ export default function LoginPage() {
         {/* ── Logo + Branding ──────────────────────────── */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <img src="/icons/logo.svg" alt="MonokerOS" className="h-20 w-20" />
-          <h1
-            className="text-xl font-bold tracking-tight font-display text-fg"
-          >
+          <h1 className="text-xl font-bold tracking-tight font-display text-fg">
             Monoker<span className="text-blue">OS</span>
           </h1>
           <p className="text-xs text-fg-2">Sign in to your workspace</p>
         </div>
+
+        {/* ── Auto-login bypass notice ─────────────────── */}
+        {showAutoLoginBanner && (
+          <div className="mb-4 flex items-center justify-between rounded-sm border border-edge bg-surface-3 px-3 py-2">
+            <span className="text-xs text-fg-3">
+              {autoLoginState === "failed"
+                ? "Auto-login failed"
+                : "Auto-login skipped"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem(AUTO_LOGIN_BYPASS_KEY);
+                setAutoLoginState("checking");
+                setError("");
+              }}
+              className="text-xs text-blue underline hover:text-blue/80"
+            >
+              Retry auto-login
+            </button>
+          </div>
+        )}
 
         {/* ── OAuth Providers (visual-only) ────────────── */}
         <div className="mb-5 flex flex-col gap-2">
@@ -144,7 +278,7 @@ export default function LoginPage() {
           />
 
           <Button type="submit" disabled={loading} fullWidth className="py-2.5">
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
       </Card>

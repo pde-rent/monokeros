@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode, type ComponentType } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  type ReactNode,
+  type ComponentType,
+  type DependencyList,
+} from "react";
 
 export type FabAction = {
   id: string;
   label: string;
-  icon: ComponentType<{ size?: number; weight?: string }>;
+  icon: ComponentType<{ size?: number }>;
   onClick: () => void;
 };
 
@@ -26,15 +35,13 @@ const FabContext = createContext<FabContextValue>({
 
 export function FabProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<FabConfig>(null);
-  return (
-    <FabContext.Provider value={{ config, setConfig }}>
-      {children}
-    </FabContext.Provider>
-  );
+  return <FabContext.Provider value={{ config, setConfig }}>{children}</FabContext.Provider>;
 }
 
-export function useRegisterFab(config: FabConfig) {
+export function useRegisterFab(factory: () => FabConfig, deps: DependencyList) {
   const { setConfig } = useContext(FabContext);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const config = useMemo(factory, deps);
   useEffect(() => {
     setConfig(config);
     return () => setConfig(null);

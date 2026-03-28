@@ -1,15 +1,27 @@
-'use client';
+"use client";
 
-import { useDiagramStore } from '@/stores/diagram-store';
-import { useProjects } from '@/hooks/use-queries';
-import { useToggleFilter } from '@/hooks/use-toggle-filter';
-import { DiagramViewMode, MemberStatus } from '@monokeros/types';
-import { MEMBER_STATUS_LABELS, MEMBER_STATUS_COLORS, DIAGRAM_VIEW_MODE_LABELS } from '@monokeros/constants';
-import { useTeams } from '@/hooks/use-queries';
-import { GraphIcon, TableIcon, UsersThreeIcon, BuildingsIcon, BriefcaseIcon, ArrowsOutIcon } from '@phosphor-icons/react';
-import { ToggleGroup, NavButton, DropdownSelect } from '@monokeros/ui';
-import { FilterPanelShell, FilterSection } from '@/components/shared/filter-panel-shell';
-import { FilterChip } from '@/components/shared/filter-chip';
+import { useDiagramStore } from "@/stores/diagram-store";
+import { useProjects } from "@/hooks/use-queries";
+import { useToggleFilter } from "@/hooks/use-toggle-filter";
+import { DiagramViewMode, MemberStatus } from "@monokeros/types";
+import {
+  MEMBER_STATUS_LABELS,
+  MEMBER_STATUS_COLORS,
+  DIAGRAM_VIEW_MODE_LABELS,
+} from "@monokeros/constants";
+import { useTeams } from "@/hooks/use-queries";
+import {
+  GraphIcon,
+  TableIcon,
+  UsersThreeIcon,
+  BuildingsIcon,
+  BriefcaseIcon,
+  ArrowsOutIcon,
+} from "@phosphor-icons/react";
+import { ToggleGroup, NavButton, DropdownSelect } from "@monokeros/ui";
+import { FilterPanelShell, FilterSection } from "@/components/shared/filter-panel-shell";
+import { FilterChip } from "@/components/shared/filter-chip";
+import { FilterChipsSection } from "@/components/shared/filter-chips-section";
 
 const VIEW_MODE_ICONS: Record<DiagramViewMode, React.ReactNode> = {
   [DiagramViewMode.WORKFORCE]: <UsersThreeIcon size={14} />,
@@ -25,8 +37,8 @@ const viewModes = Object.values(DiagramViewMode).map((v) => ({
 const memberStatuses = Object.values(MemberStatus);
 
 const displayOptions = [
-  { value: 'diagram' as const, label: 'Diagram', icon: <GraphIcon size={14} /> },
-  { value: 'table' as const, label: 'Table', icon: <TableIcon size={14} /> },
+  { value: "diagram" as const, label: "Diagram", icon: <GraphIcon size={14} /> },
+  { value: "table" as const, label: "Table", icon: <TableIcon size={14} /> },
 ];
 
 interface FilterPanelProps {
@@ -55,16 +67,25 @@ export function FilterPanel({ onPopout }: FilterPanelProps) {
   const toggleStatus = useToggleFilter(statusFilter, setStatusFilter);
 
   const projectOptions = [
-    { value: '', label: 'All Projects' },
+    { value: "", label: "All Projects" },
     ...(projects?.map((p) => ({ value: p.id, label: p.name })) ?? []),
   ];
 
   return (
-    <FilterPanelShell search={search} onSearchChange={setSearch} searchPlaceholder="Search agents...">
+    <FilterPanelShell
+      search={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Search agents..."
+    >
       <FilterSection>
         <div className="px-2">
           <div className="flex border border-edge rounded-sm">
-            <ToggleGroup className="flex-1" options={displayOptions} value={displayMode} onChange={setDisplayMode} />
+            <ToggleGroup
+              className="flex-1"
+              options={displayOptions}
+              value={displayMode}
+              onChange={setDisplayMode}
+            />
             {onPopout && (
               <button
                 onClick={onPopout}
@@ -110,27 +131,21 @@ export function FilterPanel({ onPopout }: FilterPanelProps) {
         </div>
       </FilterSection>
 
-      {/* Status Filter */}
-      <FilterSection label="Status">
-        <div className="flex flex-wrap gap-1 px-3">
-          {memberStatuses.map((status) => (
-            <FilterChip
-              key={status}
-              label={MEMBER_STATUS_LABELS[status]}
-              color={MEMBER_STATUS_COLORS[status]}
-              isActive={statusFilter.length === 0 || statusFilter.includes(status)}
-              onClick={() => toggleStatus(status)}
-            />
-          ))}
-        </div>
-      </FilterSection>
+      <FilterChipsSection
+        label="Status"
+        items={memberStatuses}
+        labels={MEMBER_STATUS_LABELS}
+        colors={MEMBER_STATUS_COLORS}
+        filter={statusFilter}
+        onToggle={toggleStatus}
+      />
 
       {/* Project Filter (Project view only) */}
       {viewMode === DiagramViewMode.PROJECT && (
         <FilterSection label="Project">
           <div className="px-3">
             <DropdownSelect
-              value={projectFilter ?? ''}
+              value={projectFilter ?? ""}
               onChange={(v) => setProjectFilter(v || null)}
               options={projectOptions}
               size="compact"

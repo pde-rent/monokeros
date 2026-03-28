@@ -132,27 +132,48 @@
 }
 
 /* Prism token colors (same as code-theme.css but scoped to rendered-markdown) */
-.rendered-markdown .token.keyword { color: var(--color-accent-blue); }
+.rendered-markdown .token.keyword {
+  color: var(--color-accent-blue);
+}
 .rendered-markdown .token.string,
-.rendered-markdown .token.attr-value { color: var(--color-accent-green); }
+.rendered-markdown .token.attr-value {
+  color: var(--color-accent-green);
+}
 .rendered-markdown .token.comment,
 .rendered-markdown .token.block-comment,
 .rendered-markdown .token.prolog,
 .rendered-markdown .token.doctype,
-.rendered-markdown .token.cdata { color: var(--color-text-tertiary); font-style: italic; }
+.rendered-markdown .token.cdata {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
 .rendered-markdown .token.function,
-.rendered-markdown .token.class-name { color: var(--color-accent-purple); }
+.rendered-markdown .token.class-name {
+  color: var(--color-accent-purple);
+}
 .rendered-markdown .token.number,
-.rendered-markdown .token.boolean { color: var(--color-accent-orange); }
+.rendered-markdown .token.boolean {
+  color: var(--color-accent-orange);
+}
 .rendered-markdown .token.operator,
-.rendered-markdown .token.punctuation { color: var(--color-text-secondary); }
+.rendered-markdown .token.punctuation {
+  color: var(--color-text-secondary);
+}
 .rendered-markdown .token.tag,
-.rendered-markdown .token.selector { color: var(--color-accent-red); }
+.rendered-markdown .token.selector {
+  color: var(--color-accent-red);
+}
 .rendered-markdown .token.property,
-.rendered-markdown .token.attr-name { color: var(--color-accent-orange); }
+.rendered-markdown .token.attr-name {
+  color: var(--color-accent-orange);
+}
 .rendered-markdown .token.regex,
-.rendered-markdown .token.important { color: var(--color-accent-orange); }
-.rendered-markdown .token.builtin { color: var(--color-accent-blue); }
+.rendered-markdown .token.important {
+  color: var(--color-accent-orange);
+}
+.rendered-markdown .token.builtin {
+  color: var(--color-accent-blue);
+}
 
 /* Tables */
 .rendered-markdown table {
@@ -242,10 +263,18 @@
   font-weight: 600;
 }
 
-.rendered-markdown .mention-agent { color: var(--color-accent-blue); }
-.rendered-markdown .mention-project { color: var(--color-accent-green); }
-.rendered-markdown .mention-task { color: var(--color-accent-orange); }
-.rendered-markdown .mention-file { color: var(--color-accent-purple); }
+.rendered-markdown .mention-agent {
+  color: var(--color-accent-blue);
+}
+.rendered-markdown .mention-project {
+  color: var(--color-accent-green);
+}
+.rendered-markdown .mention-task {
+  color: var(--color-accent-orange);
+}
+.rendered-markdown .mention-file {
+  color: var(--color-accent-purple);
+}
 
 .rendered-markdown .mention:hover {
   text-decoration: underline;

@@ -1,12 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { PencilSimpleIcon, XIcon, TrashIcon, TelegramLogoIcon } from '@phosphor-icons/react';
-import { Dialog, Button, Input } from '@monokeros/ui';
-import { api } from '@/lib/api-client';
-import { useWorkspaceStore, type WorkspaceInfo } from '@/stores/workspace-store';
-import { DeleteWorkspaceDialog } from './delete-workspace-dialog';
-import { PRESET_COLORS } from '@monokeros/constants';
+import { useState } from "react";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
+import { Dialog, Button, FormError } from "@monokeros/ui";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { DeleteWorkspaceDialog } from "./delete-workspace-dialog";
+import { WorkspaceFormFields } from "./workspace-form-fields";
+
+interface WorkspaceInfo {
+  _id?: string;
+  id?: string;
+  slug: string;
+  displayName: string;
+  description?: string;
+  branding: { logo: string | null; color: string };
+}
 
 interface Props {
   open: boolean;
@@ -16,50 +26,32 @@ interface Props {
 }
 
 export function EditWorkspaceDialog({ open, onClose, onDeleted, workspace }: Props) {
-  const { updateWorkspace } = useWorkspaceStore();
+  const updateConfig = useMutation(api.workspaces.updateConfig);
   const [displayName, setDisplayName] = useState(workspace.displayName);
+  const [description, setDescription] = useState(workspace.description ?? "");
   const [color, setColor] = useState(workspace.branding.color);
-  const [uploadedLogo, setUploadedLogo] = useState<string | null>(workspace.branding.logo);
-  const [telegramToken, setTelegramToken] = useState('');
-  const [showTelegram, setShowTelegram] = useState(false);
+  const logo = useImageUpload(workspace.branding.logo);
+  const [telegramToken, setTelegramToken] = useState("");
   const [showDelete, setShowDelete] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setUploadedLogo(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  }
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const payload: Record<string, unknown> = {
+      const wsId = (workspace as any)._id ?? (workspace as any).id;
+      await updateConfig({
+        workspaceId: wsId,
         displayName,
-        branding: { color, logo: uploadedLogo },
-      };
-      if (showTelegram && telegramToken) {
-        payload.telegramBotToken = telegramToken;
-      }
-
-      await api.workspaceConfig.update(workspace.slug, payload);
-
-      updateWorkspace(workspace.id, {
-        displayName,
-        branding: { color, logo: uploadedLogo },
-      });
-
+        description,
+        branding: { color, logo: logo.imageUrl },
+      } as any);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update workspace');
+      setError(err instanceof Error ? err.message : "Failed to update workspace");
     } finally {
       setLoading(false);
     }
@@ -80,125 +72,31 @@ export function EditWorkspaceDialog({ open, onClose, onDeleted, workspace }: Pro
         onClose={onClose}
         title="Edit Workspace"
         icon={<PencilSimpleIcon size={14} weight="bold" />}
-        width={420}
+        width={480}
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="border border-red bg-red-light px-3 py-2 text-xs text-red rounded-sm">
-              {error}
-            </div>
-          )}
+          <FormError error={error} />
 
-          {/* Logo + Name */}
-          <div className="flex gap-3">
-            <div className="shrink-0">
-              <label className="text-xs font-medium uppercase tracking-wider text-fg-3">Logo</label>
-              <div className="mt-1 relative">
-                <div
-                  className="h-12 w-12 rounded-lg border border-edge overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: color }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  {uploadedLogo ? (
-                    <img src={uploadedLogo} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-white text-lg font-bold">
-                      {displayName.charAt(0).toUpperCase() || '?'}
-                    </span>
-                  )}
-                </div>
-                {uploadedLogo && (
-                  <button
-                    type="button"
-                    onClick={() => setUploadedLogo(null)}
-                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-1 border border-edge text-fg-3 hover:text-red"
-                  >
-                    <XIcon size={10} weight="bold" />
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1">
-              <Input
-                label="Display Name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Workspace name"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Slug (read-only) */}
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-fg-3">Slug</label>
-            <p className="mt-1 text-xs text-fg-3">/{workspace.slug}</p>
-          </div>
-
-          {/* Color picker */}
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-fg-3">Color</label>
-            <div className="mt-1.5 flex items-center gap-2">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`h-6 w-6 rounded-md border-2 transition-all ${
-                    color === c ? 'border-fg scale-110' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Communication Channels */}
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-fg-3">
-              Communication
-            </label>
-            <div className="mt-2 space-y-2">
-              {/* Telegram */}
-              <div className="flex items-center gap-2 p-2 rounded-md border border-edge bg-surface-2">
-                <TelegramLogoIcon size={18} className="text-[#0088cc] shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-fg">Telegram</div>
-                  <div className="text-[10px] text-fg-3">Connect your Telegram bot</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowTelegram(!showTelegram)}
-                  className="text-xs text-blue hover:underline shrink-0"
-                >
-                  {showTelegram ? 'Cancel' : 'Setup'}
-                </button>
-              </div>
-              {showTelegram && (
-                <div className="pl-7 space-y-1">
-                  <Input
-                    value={telegramToken}
-                    onChange={(e) => setTelegramToken(e.target.value)}
-                    placeholder="123456:ABC-DEF..."
-                  />
-                  <p className="text-xs text-fg-3">Get a token from @BotFather on Telegram</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <WorkspaceFormFields
+            values={{
+              name: displayName,
+              slug: workspace.slug,
+              description,
+              color,
+              telegramToken,
+            }}
+            onNameChange={setDisplayName}
+            onDescriptionChange={setDescription}
+            onColorChange={setColor}
+            onTelegramTokenChange={setTelegramToken}
+            logo={logo}
+            slugReadOnly
+          />
 
           {/* Actions */}
           <div className="flex gap-2">
             <Button type="submit" disabled={loading || !canSubmit} fullWidth>
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? "Saving..." : "Save Changes"}
             </Button>
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel

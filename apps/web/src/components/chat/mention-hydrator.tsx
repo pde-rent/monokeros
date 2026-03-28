@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useCallback } from 'react';
-import { useMembers, useProjects, useTasks, useDrives } from '@/hooks/use-queries';
-import { useAgencyNavigation } from '@/hooks/use-agency-navigation';
-import type { FileEntry } from '@monokeros/types';
+import { useEffect, useCallback } from "react";
+import { useMembers, useProjects, useTasks, useDrives } from "@/hooks/use-queries";
+import { useAgencyNavigation } from "@/hooks/use-agency-navigation";
+import type { FileEntry } from "@monokeros/types";
 
 interface Props {
   containerRef: React.RefObject<HTMLElement | null>;
@@ -12,9 +12,12 @@ interface Props {
 }
 
 /** Flatten all file entries from drives into a lookup map by name */
-function buildFileLookup(entries: FileEntry[], map: Map<string, FileEntry> = new Map()): Map<string, FileEntry> {
+function buildFileLookup(
+  entries: FileEntry[],
+  map: Map<string, FileEntry> = new Map(),
+): Map<string, FileEntry> {
   for (const entry of entries) {
-    if (entry.type === 'file') {
+    if (entry.type === "file") {
       map.set(entry.name, entry);
     }
     if (entry.children) {
@@ -34,16 +37,11 @@ export function MentionHydrator({ containerRef, signal }: Props) {
   const { data: projects } = useProjects();
   const { data: tasks } = useTasks();
   const { data: drives } = useDrives();
-  const {
-    goToAgentDiagram,
-    goToProjectDetail,
-    goToTaskDetail,
-    goToFile,
-  } = useAgencyNavigation();
+  const { goToAgentDiagram, goToProjectDetail, goToTaskDetail, goToFile } = useAgencyNavigation();
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
-      const target = (e.target as HTMLElement).closest<HTMLElement>('[data-mention-type]');
+      const target = (e.target as HTMLElement).closest<HTMLElement>("[data-mention-type]");
       if (!target) return;
 
       const type = target.dataset.mentionType;
@@ -51,9 +49,9 @@ export function MentionHydrator({ containerRef, signal }: Props) {
       if (!type || !name) return;
 
       switch (type) {
-        case 'agent': {
+        case "agent": {
           const member = members?.find(
-            (m) => m.name.replace(/\s+/g, '-') === name || m.name === name,
+            (m) => m.name.replace(/\s+/g, "-") === name || m.name === name,
           );
           if (member) {
             e.preventDefault();
@@ -61,9 +59,9 @@ export function MentionHydrator({ containerRef, signal }: Props) {
           }
           break;
         }
-        case 'project': {
+        case "project": {
           const project = projects?.find(
-            (p) => p.name.replace(/\s+/g, '-') === name || p.name === name,
+            (p) => p.name.replace(/\s+/g, "-") === name || p.name === name,
           );
           if (project) {
             e.preventDefault();
@@ -71,7 +69,7 @@ export function MentionHydrator({ containerRef, signal }: Props) {
           }
           break;
         }
-        case 'task': {
+        case "task": {
           const task = tasks?.find((t) => t.id === name || t.title === name);
           if (task) {
             e.preventDefault();
@@ -79,7 +77,7 @@ export function MentionHydrator({ containerRef, signal }: Props) {
           }
           break;
         }
-        case 'file': {
+        case "file": {
           if (!drives) break;
           const fileLookup = new Map<string, FileEntry>();
           for (const d of drives.teamDrives) buildFileLookup(d.files, fileLookup);
@@ -99,15 +97,24 @@ export function MentionHydrator({ containerRef, signal }: Props) {
         }
       }
     },
-    [members, projects, tasks, drives, goToAgentDiagram, goToProjectDetail, goToTaskDetail, goToFile],
+    [
+      members,
+      projects,
+      tasks,
+      drives,
+      goToAgentDiagram,
+      goToProjectDetail,
+      goToTaskDetail,
+      goToFile,
+    ],
   );
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    container.addEventListener('click', handleClick);
-    return () => container.removeEventListener('click', handleClick);
+    container.addEventListener("click", handleClick);
+    return () => container.removeEventListener("click", handleClick);
   }, [containerRef, handleClick, signal]);
 
   return null;

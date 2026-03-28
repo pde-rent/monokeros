@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useTasks, useProjects } from '@/hooks/use-queries';
-import { useTaskFiltering } from '@/hooks/use-task-filtering';
-import { useUIStore } from '@/stores/ui-store';
-import type { ProjectViewMode } from '@monokeros/types';
+import { useState, useCallback, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useTasks, useProjects } from "@/hooks/use-queries";
+import { useTaskFiltering } from "@/hooks/use-task-filtering";
+import { useUIStore } from "@/stores/ui-store";
+import type { ProjectViewMode } from "@monokeros/types";
 
 export function useProjectPageView(initialProjectRef?: string) {
   const router = useRouter();
@@ -26,7 +26,7 @@ export function useProjectPageView(initialProjectRef?: string) {
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [selectedTaskId, setSelectedTaskIdRaw] = useState<string | null>(null);
 
   // Sync activeProjectId when slug resolution completes
@@ -34,18 +34,19 @@ export function useProjectPageView(initialProjectRef?: string) {
     setActiveProjectId(resolvedInitialId);
   }
 
-  const setSelectedTaskId = useCallback((taskId: string | null) => {
-    setSelectedTaskIdRaw(taskId);
-    if (taskId) {
-      openDetailPanel('task', taskId);
-    } else {
-      closeDetailPanel();
-    }
-  }, [openDetailPanel, closeDetailPanel]);
-
-  const { data: tasks } = useTasks(
-    activeProjectId ? { projectId: activeProjectId } : undefined,
+  const setSelectedTaskId = useCallback(
+    (taskId: string | null) => {
+      setSelectedTaskIdRaw(taskId);
+      if (taskId) {
+        openDetailPanel("task", taskId);
+      } else {
+        closeDetailPanel();
+      }
+    },
+    [openDetailPanel, closeDetailPanel],
   );
+
+  const { data: tasks } = useTasks(activeProjectId ? { projectId: activeProjectId } : undefined);
 
   const filteredTasks = useTaskFiltering(tasks, statusFilter, search);
   const selectedTask = tasks?.find((t) => t.id === selectedTaskId) ?? null;

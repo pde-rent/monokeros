@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useCallback } from 'react';
-import type { MessageReference } from '@monokeros/types';
-import { MessageReferenceType } from '@monokeros/types';
+import { useState, useMemo, useCallback } from "react";
+import type { MessageReference } from "@monokeros/types";
+import { MessageReferenceType } from "@monokeros/types";
 
 export interface MentionSuggestion {
   id: string;
   label: string;
   secondary?: string;
-  type: MessageReference['type'];
+  type: MessageReference["type"];
   display: string;
   color: string;
 }
@@ -20,10 +20,10 @@ interface TriggerState {
 }
 
 const TRIGGER_MAP: Record<string, { type: MessageReferenceType; label: string; color: string }> = {
-  '@': { type: MessageReferenceType.AGENT, label: 'Agents', color: 'var(--color-blue)' },
-  '#': { type: MessageReferenceType.PROJECT, label: 'Projects', color: 'var(--color-green)' },
-  '~': { type: MessageReferenceType.TASK, label: 'Tasks', color: 'var(--color-orange)' },
-  ':': { type: MessageReferenceType.FILE, label: 'Files', color: 'var(--color-purple)' },
+  "@": { type: MessageReferenceType.AGENT, label: "Agents", color: "var(--color-blue)" },
+  "#": { type: MessageReferenceType.PROJECT, label: "Projects", color: "var(--color-green)" },
+  "~": { type: MessageReferenceType.TASK, label: "Tasks", color: "var(--color-orange)" },
+  ":": { type: MessageReferenceType.FILE, label: "Files", color: "var(--color-purple)" },
 };
 
 interface MentionPools {
@@ -44,15 +44,26 @@ export function useMentions(pools: MentionPools) {
 
     let pool: MentionSuggestion[] = [];
     switch (meta.type) {
-      case MessageReferenceType.AGENT: pool = pools.agents; break;
-      case MessageReferenceType.PROJECT: pool = pools.projects; break;
-      case MessageReferenceType.TASK: pool = pools.tasks; break;
-      case MessageReferenceType.FILE: pool = pools.files; break;
+      case MessageReferenceType.AGENT:
+        pool = pools.agents;
+        break;
+      case MessageReferenceType.PROJECT:
+        pool = pools.projects;
+        break;
+      case MessageReferenceType.TASK:
+        pool = pools.tasks;
+        break;
+      case MessageReferenceType.FILE:
+        pool = pools.files;
+        break;
     }
 
     const q = triggerState.query.toLowerCase();
     return pool
-      .filter((s) => s.label.toLowerCase().includes(q) || (s.secondary?.toLowerCase().includes(q) ?? false))
+      .filter(
+        (s) =>
+          s.label.toLowerCase().includes(q) || (s.secondary?.toLowerCase().includes(q) ?? false),
+      )
       .slice(0, 8);
   }, [triggerState, pools]);
 
@@ -63,11 +74,11 @@ export function useMentions(pools: MentionPools) {
   const detectTrigger = useCallback((text: string, cursorPos: number) => {
     // Walk backward from cursor to find trigger
     let i = cursorPos - 1;
-    while (i >= 0 && text[i] !== ' ' && text[i] !== '\n') {
+    while (i >= 0 && text[i] !== " " && text[i] !== "\n") {
       const ch = text[i];
       if (ch in TRIGGER_MAP) {
         // Trigger must be at start of input or preceded by space
-        if (i === 0 || text[i - 1] === ' ' || text[i - 1] === '\n') {
+        if (i === 0 || text[i - 1] === " " || text[i - 1] === "\n") {
           const query = text.slice(i + 1, cursorPos);
           setTriggerState({ trigger: ch, query, startIndex: i });
           setActiveIndex(0);
@@ -99,21 +110,21 @@ export function useMentions(pools: MentionPools) {
     (e: React.KeyboardEvent): boolean => {
       if (!isActive) return false;
 
-      if (e.key === 'ArrowDown') {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
         return true;
       }
-      if (e.key === 'ArrowUp') {
+      if (e.key === "ArrowUp") {
         e.preventDefault();
         setActiveIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
         return true;
       }
-      if (e.key === 'Tab' || e.key === 'Enter') {
+      if (e.key === "Tab" || e.key === "Enter") {
         e.preventDefault();
         return true; // Signal to accept current suggestion
       }
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         setTriggerState(null);
         return true;
@@ -130,13 +141,11 @@ export function useMentions(pools: MentionPools) {
 
       for (const [trigger, meta] of Object.entries(TRIGGER_MAP)) {
         // Match trigger + word chars (including hyphens, dots, underscores)
-        const regex = new RegExp(`(?:^|\\s)\\${trigger}([\\w.\\-]+)`, 'g');
+        const regex = new RegExp(`(?:^|\\s)\\${trigger}([\\w.\\-]+)`, "g");
         let match: RegExpExecArray | null;
         while ((match = regex.exec(content)) !== null) {
           const display = match[1];
-          const suggestion = allPools.find(
-            (s) => s.type === meta.type && s.display === display,
-          );
+          const suggestion = allPools.find((s) => s.type === meta.type && s.display === display);
           if (suggestion) {
             refs.push({ type: meta.type, id: suggestion.id, display: `${trigger}${display}` });
           }

@@ -1,6 +1,6 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { getInitials } from '@monokeros/ui';
+import { memo } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { getInitials } from "@monokeros/ui";
 
 function HumanNodeComponent({ data }: NodeProps) {
   const { name, title, avatarUrl, supervisedCount } = data as {
@@ -18,7 +18,7 @@ function HumanNodeComponent({ data }: NodeProps) {
         ) : (
           <div
             className="flex h-8 w-8 items-center justify-center text-xs font-bold text-fg-inverse rounded-sm"
-            style={{ backgroundColor: 'var(--color-purple)' }}
+            style={{ backgroundColor: "var(--color-purple)" }}
           >
             {getInitials(name)}
           </div>
@@ -29,11 +29,13 @@ function HumanNodeComponent({ data }: NodeProps) {
         </div>
       </div>
 
-      <div className="mt-2 text-[10px] text-purple">
-        Supervises {supervisedCount} teams
-      </div>
+      <div className="mt-2 text-[10px] text-purple">Supervises {supervisedCount} teams</div>
 
-      <Handle type="source" position={Position.Bottom} style={{ backgroundColor: 'var(--color-purple)' }} />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ backgroundColor: "var(--color-purple)" }}
+      />
     </div>
   );
 }

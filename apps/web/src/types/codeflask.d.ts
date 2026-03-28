@@ -1,4 +1,4 @@
-declare module 'codeflask' {
+declare module "codeflask" {
   interface CodeFlaskOptions {
     language?: string;
     lineNumbers?: boolean;

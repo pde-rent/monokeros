@@ -1,6 +1,6 @@
-import { CrownIcon } from '@phosphor-icons/react';
-import { StatusIndicator, ColorDot, PanelSection } from '@monokeros/ui';
-import type { Member, Team } from '@monokeros/types';
+import { CrownIcon } from "@phosphor-icons/react";
+import { StatusIndicator, ColorDot, PanelSection } from "@monokeros/ui";
+import type { Member, Team } from "@monokeros/types";
 
 export function TeamDetail({ team, members }: { team: Team; members: Member[] }) {
   return (

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import type { MentionSuggestion } from '@/hooks/use-mentions';
-import { AtIcon, HashIcon, TildeIcon, FileTextIcon } from '@phosphor-icons/react';
+import type { MentionSuggestion } from "@/hooks/use-mentions";
+import { AtIcon, HashIcon, TildeIcon, FileTextIcon } from "@phosphor-icons/react";
 
 interface Props {
   suggestions: MentionSuggestion[];
@@ -44,19 +44,14 @@ export function MentionDropdown({ suggestions, activeIndex, triggerMeta, onSelec
             }}
             className={`flex w-full items-center gap-2 px-3 py-1 text-left text-sm transition-colors ${
               i === activeIndex
-                ? 'bg-surface-3 text-fg'
-                : 'text-fg-2 hover:bg-surface-3 hover:text-fg'
+                ? "bg-surface-3 text-fg"
+                : "text-fg-2 hover:bg-surface-3 hover:text-fg"
             }`}
           >
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: s.color }}
-            />
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
             <span className="min-w-0 flex-1 truncate font-medium">{s.label}</span>
             {s.secondary && (
-              <span className="shrink-0 truncate text-xs text-fg-3">
-                {s.secondary}
-              </span>
+              <span className="shrink-0 truncate text-xs text-fg-3">{s.secondary}</span>
             )}
           </button>
         ))}

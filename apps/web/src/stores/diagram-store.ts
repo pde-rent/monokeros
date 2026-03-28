@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { DiagramViewMode } from '@monokeros/types';
-import { createStore, createStoreHook } from './create-store';
+import { DiagramViewMode } from "@monokeros/types";
+import { createStore, createStoreHook } from "./create-store";
 
-type OrgDisplayMode = 'diagram' | 'table';
+type OrgDisplayMode = "diagram" | "table";
 
 interface DiagramState {
   viewMode: DiagramViewMode;
@@ -31,10 +31,15 @@ interface DiagramActions {
 
 const store = createStore<DiagramState, DiagramActions>(
   {
-    viewMode: DiagramViewMode.WORKFORCE, displayMode: 'diagram',
-    selectedNodeId: null, highlightedNodeId: null,
-    teamFilter: [], statusFilter: [], projectFilter: null,
-    filterPanelOpen: true, search: '',
+    viewMode: DiagramViewMode.WORKFORCE,
+    displayMode: "diagram",
+    selectedNodeId: null,
+    highlightedNodeId: null,
+    teamFilter: [],
+    statusFilter: [],
+    projectFilter: null,
+    filterPanelOpen: true,
+    search: "",
   },
   (setState, getState) => ({
     setViewMode: (mode) => setState({ viewMode: mode }),

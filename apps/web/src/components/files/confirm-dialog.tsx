@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { WarningIcon } from '@phosphor-icons/react';
-import { Dialog, Button } from '@monokeros/ui';
+import { WarningIcon } from "@phosphor-icons/react";
+import { Dialog, Button } from "@monokeros/ui";
 
 interface Props {
   title: string;
@@ -14,7 +14,7 @@ interface Props {
 export function ConfirmDialog({
   title,
   message,
-  confirmLabel = 'Delete',
+  confirmLabel = "Delete",
   onConfirm,
   onCancel,
 }: Props) {

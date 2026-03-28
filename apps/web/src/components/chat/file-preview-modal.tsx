@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { FileIcon } from '@phosphor-icons/react';
-import { Window, EmptyState } from '@monokeros/ui';
-import type { MessageAttachment } from '@monokeros/types';
-import { formatFileSize, isPreviewable, getExt } from '@monokeros/utils';
+import { FileIcon } from "@phosphor-icons/react";
+import { Window, EmptyState } from "@monokeros/ui";
+import type { MessageAttachment } from "@monokeros/types";
+import { formatFileSize, isPreviewable, getExt } from "@monokeros/utils";
 
 interface Props {
   attachment: MessageAttachment;

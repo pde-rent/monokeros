@@ -1,9 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-export function useToggleFilter(
-  current: string[],
-  onChange: (next: string[]) => void,
-) {
+export function useToggleFilter(current: string[], onChange: (next: string[]) => void) {
   const toggle = useCallback(
     (value: string) => {
       if (current.includes(value)) {

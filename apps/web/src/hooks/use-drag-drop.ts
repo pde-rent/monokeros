@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
 export function useDragDrop(onFiles: (files: File[]) => void) {
   const [dragOver, setDragOver] = useState(false);
@@ -10,12 +10,15 @@ export function useDragDrop(onFiles: (files: File[]) => void) {
 
   const handleDragLeave = useCallback(() => setDragOver(false), []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length) onFiles(files);
-  }, [onFiles]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) onFiles(files);
+    },
+    [onFiles],
+  );
 
   return { dragOver, handleDragOver, handleDragLeave, handleDrop };
 }

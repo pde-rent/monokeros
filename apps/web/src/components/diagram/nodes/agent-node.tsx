@@ -1,25 +1,26 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import type { MemberStatus } from '@monokeros/types';
-import { StatusBadge, StatusIndicator } from '@monokeros/ui';
+import { memo } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { MemberStatus } from "@monokeros/types";
+import { StatusBadge, StatusIndicator } from "@monokeros/ui";
 
 function AgentNodeComponent({ data }: NodeProps) {
-  const { name, specialization, status, avatarUrl, highlighted, faded, projects, isSystem } = data as {
-    name: string;
-    specialization: string;
-    status: MemberStatus;
-    teamColor: string;
-    avatarUrl?: string | null;
-    highlighted?: boolean;
-    faded?: boolean;
-    projects?: { name: string; color: string }[];
-    isSystem?: boolean;
-  };
+  const { name, specialization, status, avatarUrl, highlighted, faded, projects, isSystem } =
+    data as {
+      name: string;
+      specialization: string;
+      status: MemberStatus;
+      teamColor: string;
+      avatarUrl?: string | null;
+      highlighted?: boolean;
+      faded?: boolean;
+      projects?: { name: string; color: string }[];
+      isSystem?: boolean;
+    };
 
   return (
     <div
       className={`w-[160px] border bg-elevated p-2.5 transition-all rounded-sm ${
-        highlighted ? 'border-blue shadow-lg' : isSystem ? 'border-purple/40' : 'border-edge'
+        highlighted ? "border-blue shadow-lg" : isSystem ? "border-purple/40" : "border-edge"
       }`}
       style={{ opacity: faded ? 0.3 : 1 }}
     >
@@ -45,7 +46,12 @@ function AgentNodeComponent({ data }: NodeProps) {
       {projects && projects.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {projects.map((p) => (
-            <StatusBadge key={p.name} label={p.name} color={p.color} className="text-[9px] px-1 py-0.5" />
+            <StatusBadge
+              key={p.name}
+              label={p.name}
+              color={p.color}
+              className="text-[9px] px-1 py-0.5"
+            />
           ))}
         </div>
       )}

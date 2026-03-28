@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { CaretRightIcon, CaretDownIcon, CaretUpIcon } from '@phosphor-icons/react';
-import type { FileEntry } from '@monokeros/types';
-import { getListFileIcon } from '@/lib/file-icons';
-import { useSort } from '@/hooks/use-sort';
-import { formatFileSize, formatDate, getFileTypeLabel } from '@monokeros/utils';
+import { useState, useMemo } from "react";
+import { CaretRightIcon, CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
+import type { FileEntry } from "@monokeros/types";
+import { getListFileIcon } from "@/lib/file-icons";
+import { useSort } from "@/hooks/use-sort";
+import { formatFileSize, formatDate, getFileTypeLabel } from "@monokeros/utils";
 
 interface Props {
   files: FileEntry[];
@@ -14,22 +14,30 @@ interface Props {
   onContextMenu?: (e: React.MouseEvent, entry: FileEntry | null) => void;
 }
 
-type SortField = 'name' | 'size' | 'modifiedAt' | 'type';
+type SortField = "name" | "size" | "modifiedAt" | "type";
 
-function compareFiles(a: FileEntry, b: FileEntry, field: SortField, dir: 'asc' | 'desc'): number {
-  if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+function compareFiles(a: FileEntry, b: FileEntry, field: SortField, dir: "asc" | "desc"): number {
+  if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
   let cmp = 0;
   switch (field) {
-    case 'name': cmp = a.name.localeCompare(b.name); break;
-    case 'size': cmp = a.size - b.size; break;
-    case 'modifiedAt': cmp = new Date(a.modifiedAt).getTime() - new Date(b.modifiedAt).getTime(); break;
-    case 'type': cmp = a.mimeType.localeCompare(b.mimeType); break;
+    case "name":
+      cmp = a.name.localeCompare(b.name);
+      break;
+    case "size":
+      cmp = a.size - b.size;
+      break;
+    case "modifiedAt":
+      cmp = new Date(a.modifiedAt).getTime() - new Date(b.modifiedAt).getTime();
+      break;
+    case "type":
+      cmp = a.mimeType.localeCompare(b.mimeType);
+      break;
   }
-  return dir === 'asc' ? cmp : -cmp;
+  return dir === "asc" ? cmp : -cmp;
 }
 
 export function FileListView({ files, selectedPath, onSelect, onContextMenu }: Props) {
-  const { sortKey: sortField, sortDir: sortDirection, handleSort } = useSort<SortField>('name');
+  const { sortKey: sortField, sortDir: sortDirection, handleSort } = useSort<SortField>("name");
 
   const sortedFiles = useMemo(() => {
     return [...files].sort((a, b) => compareFiles(a, b, sortField, sortDirection));
@@ -41,40 +49,36 @@ export function FileListView({ files, selectedPath, onSelect, onContextMenu }: P
       <div className="grid grid-cols-[1.5rem_1fr_5rem_7rem_5rem] items-center border-b border-edge bg-surface-2 px-2 py-1.5 text-xs font-medium text-fg-2">
         <div></div>
         <button
-          onClick={() => handleSort('name')}
+          onClick={() => handleSort("name")}
           className="flex items-center gap-1 text-left hover:text-fg"
         >
           Name
-          {sortField === 'name' && (
-            sortDirection === 'asc' ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />
-          )}
+          {sortField === "name" &&
+            (sortDirection === "asc" ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />)}
         </button>
         <button
-          onClick={() => handleSort('size')}
+          onClick={() => handleSort("size")}
           className="flex items-center gap-1 text-right hover:text-fg"
         >
           Size
-          {sortField === 'size' && (
-            sortDirection === 'asc' ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />
-          )}
+          {sortField === "size" &&
+            (sortDirection === "asc" ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />)}
         </button>
         <button
-          onClick={() => handleSort('modifiedAt')}
+          onClick={() => handleSort("modifiedAt")}
           className="flex items-center gap-1 text-right hover:text-fg"
         >
           Modified
-          {sortField === 'modifiedAt' && (
-            sortDirection === 'asc' ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />
-          )}
+          {sortField === "modifiedAt" &&
+            (sortDirection === "asc" ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />)}
         </button>
         <button
-          onClick={() => handleSort('type')}
+          onClick={() => handleSort("type")}
           className="flex items-center gap-1 text-right hover:text-fg"
         >
           Type
-          {sortField === 'type' && (
-            sortDirection === 'asc' ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />
-          )}
+          {sortField === "type" &&
+            (sortDirection === "asc" ? <CaretUpIcon size={8} /> : <CaretDownIcon size={8} />)}
         </button>
       </div>
 
@@ -118,11 +122,11 @@ function FileListRow({
   selectedPath: string | null;
   onSelect: (file: FileEntry) => void;
   sortField: SortField;
-  sortDirection: 'asc' | 'desc';
+  sortDirection: "asc" | "desc";
   onContextMenu?: (e: React.MouseEvent, entry: FileEntry | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const isDir = entry.type === 'directory';
+  const isDir = entry.type === "directory";
   const isSelected = entry.path === selectedPath;
 
   const sortedChildren = useMemo(() => {
@@ -141,11 +145,13 @@ function FileListRow({
     <div>
       <button
         onClick={handleClick}
-        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(e, entry); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu?.(e, entry);
+        }}
         className={`row-hover grid w-full grid-cols-[1.5rem_1fr_5rem_7rem_5rem] items-center px-2 py-1.5 text-left ${
-          isSelected
-            ? 'bg-blue-light text-fg'
-            : 'text-fg'
+          isSelected ? "bg-blue-light text-fg" : "text-fg"
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
@@ -164,20 +170,20 @@ function FileListRow({
         <div className="flex min-w-0 items-center gap-2">
           {(() => {
             const { Icon, color, weight } = getListFileIcon(entry, 16);
-            return <Icon size={16} weight={weight} className={`text-[${color}]`} style={{ color }} />;
+            return (
+              <Icon size={16} weight={weight} className={`text-[${color}]`} style={{ color }} />
+            );
           })()}
           <span className="truncate text-xs">{entry.name}</span>
         </div>
 
         {/* Size */}
         <span className="text-right text-xs text-fg-2">
-          {isDir ? '--' : formatFileSize(entry.size)}
+          {isDir ? "--" : formatFileSize(entry.size)}
         </span>
 
         {/* Modified */}
-        <span className="text-right text-xs text-fg-2">
-          {formatDate(entry.modifiedAt)}
-        </span>
+        <span className="text-right text-xs text-fg-2">{formatDate(entry.modifiedAt)}</span>
 
         {/* Type */}
         <span className="truncate text-right text-xs text-fg-2">
@@ -204,4 +210,3 @@ function FileListRow({
     </div>
   );
 }
-

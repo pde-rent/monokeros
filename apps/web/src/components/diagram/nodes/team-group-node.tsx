@@ -1,6 +1,6 @@
-import { memo } from 'react';
-import { type NodeProps } from '@xyflow/react';
-import { Badge } from '@monokeros/ui';
+import { memo } from "react";
+import { type NodeProps } from "@xyflow/react";
+import { Badge } from "@monokeros/ui";
 
 function TeamGroupNodeComponent({ data }: NodeProps) {
   const { label, teamColor, agentCount } = data as {

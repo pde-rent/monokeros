@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import type { Task } from '@monokeros/types';
-import { useMembers, useTeams } from '@/hooks/use-queries';
-import { StatusIndicator, ColorDot, Avatar, Badge, Card, CardItem } from '@monokeros/ui';
-import { PRIORITY_COLORS, TASK_STATUS_LABELS, getTeamColor } from '@monokeros/constants';
+import type { Task } from "@monokeros/types";
+import { useMembers, useTeams } from "@/hooks/use-queries";
+import { StatusIndicator, ColorDot, Avatar, Badge, Card, CardItem } from "@monokeros/ui";
+import { PRIORITY_COLORS, TASK_STATUS_LABELS, getTeamColor } from "@monokeros/constants";
 
 function QueueTaskItem({ task, onClick }: { task: Task; onClick: () => void }) {
   return (
@@ -12,13 +12,9 @@ function QueueTaskItem({ task, onClick }: { task: Task; onClick: () => void }) {
         <span className="mt-1">
           <ColorDot color={PRIORITY_COLORS[task.priority]} />
         </span>
-        <span className="text-xs text-fg leading-tight">
-          {task.title}
-        </span>
+        <span className="text-xs text-fg leading-tight">{task.title}</span>
       </div>
-      <div className="mt-1 text-[10px] text-fg-2">
-        {TASK_STATUS_LABELS[task.status]}
-      </div>
+      <div className="mt-1 text-[10px] text-fg-2">{TASK_STATUS_LABELS[task.status]}</div>
     </CardItem>
   );
 }
@@ -32,9 +28,10 @@ export function AgentQueueView({ tasks, onTaskClick }: Props) {
   const { data: members } = useMembers();
   const { data: teams } = useTeams();
 
-  const activeAgents = members?.filter((a) => {
-    return a.type === 'agent' && tasks.some((t) => t.assigneeIds.includes(a.id));
-  }) ?? [];
+  const activeAgents =
+    members?.filter((a) => {
+      return a.type === "agent" && tasks.some((t) => t.assigneeIds.includes(a.id));
+    }) ?? [];
 
   const unassigned = tasks.filter((t) => t.assigneeIds.length === 0);
 
@@ -52,12 +49,15 @@ export function AgentQueueView({ tasks, onTaskClick }: Props) {
         return (
           <Card key={agent.id} className="flex w-64 shrink-0 flex-col">
             <div className="flex items-center gap-2 border-b border-edge px-3 py-2.5">
-              <Avatar name={agent.name} src={agent.avatarUrl} color={getTeamColor(team)} size="md" />
+              <Avatar
+                name={agent.name}
+                src={agent.avatarUrl}
+                color={getTeamColor(team)}
+                size="md"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
-                  <span className="truncate text-sm font-medium text-fg">
-                    {agent.name}
-                  </span>
+                  <span className="truncate text-sm font-medium text-fg">{agent.name}</span>
                   <StatusIndicator status={agent.status} size="sm" />
                 </div>
                 <div className="text-[10px] text-fg-2">{agent.title}</div>

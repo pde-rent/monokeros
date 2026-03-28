@@ -1,15 +1,20 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import type { Task } from '@monokeros/types';
-import { PRIORITY_COLORS, PRIORITY_ORDER, TASK_STATUS_COLORS, TASK_STATUS_LABELS, getTeamColor } from '@monokeros/constants';
-import { formatLabel } from '@monokeros/utils';
-import { formatDate } from '@monokeros/utils';
-import { SortHeader, TableHeader, StatusBadge, EmptyState, AvatarStack } from '@monokeros/ui';
-import { useMembers, useTeams, useProjects } from '@/hooks/use-queries';
-import { useSort } from '@/hooks/use-sort';
+import { useMemo } from "react";
+import type { Task } from "@monokeros/types";
+import {
+  PRIORITY_COLORS,
+  PRIORITY_ORDER,
+  TASK_STATUS_COLORS,
+  TASK_STATUS_LABELS,
+  getTeamColor,
+} from "@monokeros/constants";
+import { formatLabel, formatDate } from "@monokeros/utils";
+import { SortHeader, TableHeader, StatusBadge, EmptyState, AvatarStack } from "@monokeros/ui";
+import { useMembers, useTeams, useProjects } from "@/hooks/use-queries";
+import { useSort } from "@/hooks/use-sort";
 
-type SortKey = 'title' | 'status' | 'priority' | 'project' | 'updatedAt';
+type SortKey = "title" | "status" | "priority" | "project" | "updatedAt";
 
 interface Props {
   tasks: Task[];
@@ -17,28 +22,28 @@ interface Props {
 }
 
 export function TaskTable({ tasks, onTaskClick }: Props) {
-  const { sortKey, sortDir, handleSort } = useSort<SortKey>('updatedAt', 'desc');
+  const { sortKey, sortDir, sortProps } = useSort<SortKey>("updatedAt", "desc");
   const { data: members } = useMembers();
   const { data: teams } = useTeams();
   const { data: projects } = useProjects();
 
   const sorted = useMemo(() => {
     const items = [...tasks];
-    const dir = sortDir === 'asc' ? 1 : -1;
+    const dir = sortDir === "asc" ? 1 : -1;
     items.sort((a, b) => {
       switch (sortKey) {
-        case 'title':
+        case "title":
           return a.title.localeCompare(b.title) * dir;
-        case 'status':
+        case "status":
           return a.status.localeCompare(b.status) * dir;
-        case 'priority':
+        case "priority":
           return ((PRIORITY_ORDER[a.priority] ?? 4) - (PRIORITY_ORDER[b.priority] ?? 4)) * dir;
-        case 'project': {
-          const aName = projects?.find((p) => p.id === a.projectId)?.name ?? '';
-          const bName = projects?.find((p) => p.id === b.projectId)?.name ?? '';
+        case "project": {
+          const aName = projects?.find((p) => p.id === a.projectId)?.name ?? "";
+          const bName = projects?.find((p) => p.id === b.projectId)?.name ?? "";
           return aName.localeCompare(bName) * dir;
         }
-        case 'updatedAt':
+        case "updatedAt":
           return a.updatedAt.localeCompare(b.updatedAt) * dir;
         default:
           return 0;
@@ -48,9 +53,7 @@ export function TaskTable({ tasks, onTaskClick }: Props) {
   }, [tasks, sortKey, sortDir, projects]);
 
   if (tasks.length === 0) {
-    return (
-      <EmptyState>No tasks to display</EmptyState>
-    );
+    return <EmptyState>No tasks to display</EmptyState>;
   }
 
   return (
@@ -58,14 +61,14 @@ export function TaskTable({ tasks, onTaskClick }: Props) {
       <table className="w-full">
         <thead className="sticky top-0 bg-surface-2">
           <tr className="border-b border-edge">
-            <SortHeader label="Title" column="title" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Project" column="project" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Status" column="status" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-            <SortHeader label="Priority" column="priority" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Title" column="title" {...sortProps} />
+            <SortHeader label="Project" column="project" {...sortProps} />
+            <SortHeader label="Status" column="status" {...sortProps} />
+            <SortHeader label="Priority" column="priority" {...sortProps} />
             <TableHeader>Assignees</TableHeader>
             <TableHeader>Team</TableHeader>
             <TableHeader>Phase</TableHeader>
-            <SortHeader label="Updated" column="updatedAt" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+            <SortHeader label="Updated" column="updatedAt" {...sortProps} />
           </tr>
         </thead>
         <tbody>
@@ -86,9 +89,7 @@ export function TaskTable({ tasks, onTaskClick }: Props) {
                       className="h-2 w-2 shrink-0"
                       style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
                     />
-                    <span className="text-xs font-medium text-fg">
-                      {task.title}
-                    </span>
+                    <span className="text-xs font-medium text-fg">{task.title}</span>
                   </div>
                 </td>
                 <td className="px-3 py-2">
@@ -105,14 +106,11 @@ export function TaskTable({ tasks, onTaskClick }: Props) {
                 <td className="px-3 py-2">
                   <StatusBadge
                     label={TASK_STATUS_LABELS[task.status]}
-                    color={TASK_STATUS_COLORS[task.status] ?? 'var(--color-idle)'}
+                    color={TASK_STATUS_COLORS[task.status] ?? "var(--color-idle)"}
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <StatusBadge
-                    label={task.priority}
-                    color={PRIORITY_COLORS[task.priority]}
-                  />
+                  <StatusBadge label={task.priority} color={PRIORITY_COLORS[task.priority]} />
                 </td>
                 <td className="px-3 py-2">
                   <AvatarStack
@@ -126,19 +124,15 @@ export function TaskTable({ tasks, onTaskClick }: Props) {
                 <td className="px-3 py-2">
                   {team && (
                     <span className="text-xs" style={{ color: team.color }}>
-                      {team.name.split(' ')[0]}
+                      {team.name.split(" ")[0]}
                     </span>
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <span className="text-xs text-fg-2">
-                    {formatLabel(task.phase)}
-                  </span>
+                  <span className="text-xs text-fg-2">{formatLabel(task.phase)}</span>
                 </td>
                 <td className="px-3 py-2">
-                  <span className="text-[10px] text-fg-3">
-                    {formatDate(task.updatedAt)}
-                  </span>
+                  <span className="text-[10px] text-fg-3">{formatDate(task.updatedAt)}</span>
                 </td>
               </tr>
             );

@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { ReactNode, useState, useRef, useEffect, useCallback } from 'react';
-import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
+import { ReactNode, useState, useRef, useEffect, useCallback } from "react";
+import { Panel } from "react-resizable-panels";
+import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react";
 
 /** Width of the collapsed notch in pixels */
 const NOTCH_WIDTH = 40;
@@ -21,7 +22,7 @@ interface CollapsiblePanelProps {
   /** Panel content when expanded */
   children: ReactNode;
   /** Side the panel is on - affects icon direction */
-  side: 'left' | 'right';
+  side: "left" | "right";
   /** Whether the panel is currently collapsed */
   collapsed?: boolean;
   /** Callback when collapse button is clicked */
@@ -44,7 +45,7 @@ export function CollapsiblePanel({
   collapsed = false,
   onToggleCollapse,
   headerRight,
-  className = '',
+  className = "",
 }: CollapsiblePanelProps) {
   if (collapsed) {
     // Collapsed state: vertical title with expand button (notch)
@@ -61,14 +62,14 @@ export function CollapsiblePanel({
           }}
           title="Expand"
         >
-          {side === 'left' ? <CaretRightIcon size={14} /> : <CaretLeftIcon size={14} />}
+          {side === "left" ? <CaretRightIcon size={14} /> : <CaretLeftIcon size={14} />}
         </button>
         <div
           className="whitespace-nowrap text-xs font-medium uppercase tracking-wider text-fg-3"
           style={{
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed',
-            transform: side === 'left' ? 'rotate(180deg)' : 'none',
+            writingMode: "vertical-rl",
+            textOrientation: "mixed",
+            transform: side === "left" ? "rotate(180deg)" : "none",
           }}
         >
           {title}
@@ -81,9 +82,7 @@ export function CollapsiblePanel({
   return (
     <div className={`flex h-full flex-col bg-surface ${className}`}>
       {/* Header — entire bar is clickable to collapse */}
-      <div
-        className="flex shrink-0 items-center justify-between border-b border-edge px-3 py-2 w-full transition-colors hover:bg-surface-2"
-      >
+      <div className="flex shrink-0 items-center justify-between border-b border-edge px-3 py-2 w-full transition-colors hover:bg-surface-2">
         <button
           onClick={onToggleCollapse}
           className="flex items-center gap-2 text-left flex-1"
@@ -97,13 +96,11 @@ export function CollapsiblePanel({
           className="text-fg-3 hover:text-fg transition-colors ml-2"
           title="Collapse"
         >
-          {side === 'left' ? <CaretLeftIcon size={14} /> : <CaretRightIcon size={14} />}
+          {side === "left" ? <CaretLeftIcon size={14} /> : <CaretRightIcon size={14} />}
         </button>
       </div>
       {/* Content area - full width */}
-      <div className="w-full flex-1 overflow-hidden">
-        {children}
-      </div>
+      <div className="w-full flex-1 overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -138,10 +135,28 @@ export interface UseCollapsiblePanelReturn {
  */
 export function useCollapsiblePanel(
   defaultWidth: number = DEFAULT_EXPANDED_WIDTH,
+  startCollapsed: boolean = false,
 ): UseCollapsiblePanelReturn {
   const ref = useRef<CollapsiblePanelRef | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(startCollapsed);
   const expandedWidthRef = useRef(defaultWidth);
+  const initializedRef = useRef(false);
+
+  // Initialize collapsed state on mount if startCollapsed is true
+  useEffect(() => {
+    if (startCollapsed && !initializedRef.current) {
+      initializedRef.current = true;
+      // Defer to next tick to ensure panel ref is available
+      const timer = setTimeout(() => {
+        const panel = ref.current;
+        if (panel) {
+          panel.resize(NOTCH_WIDTH);
+          setCollapsed(true);
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [startCollapsed]);
 
   // Track collapsed state by polling (react-resizable-panels doesn't have callbacks)
   useEffect(() => {
@@ -199,43 +214,56 @@ export function useCollapsiblePanel(
   };
 }
 
-/**
- * Props for the SidePanel component
- */
-export interface SidePanelProps {
-  /** Panel title (shown vertically when collapsed) */
+interface CollapsibleSidePanelProps {
+  /** Panel id for react-resizable-panels */
+  id: string;
+  /** Panel title shown in header */
   title: string;
-  /** Panel content when expanded */
+  /** Which side the panel is on */
+  side: "left" | "right";
+  /** Hook return from useCollapsiblePanel */
+  panel: UseCollapsiblePanelReturn;
+  /** Default expanded width in px (defaults to DEFAULT_EXPANDED_WIDTH) */
+  defaultWidth?: number;
+  /** Optional element in the header (before collapse button) */
+  headerRight?: ReactNode;
   children: ReactNode;
-  /** Side the panel is on - affects icon direction */
-  side: 'left' | 'right';
-  /** Hook return value from useCollapsiblePanel */
-  panelControl: UseCollapsiblePanelReturn;
-  /** Additional class names */
-  className?: string;
 }
 
 /**
- * A complete side panel component that manages its own collapse state.
- * Use this with the useCollapsiblePanel hook.
+ * Combines react-resizable-panels Panel with CollapsiblePanel,
+ * wiring up refs and sizes automatically.
  */
-export function SidePanel({
+export function CollapsibleSidePanel({
+  id,
   title,
-  children,
   side,
-  panelControl,
-  className = '',
-}: SidePanelProps) {
+  panel,
+  defaultWidth = DEFAULT_EXPANDED_WIDTH,
+  headerRight,
+  children,
+}: CollapsibleSidePanelProps) {
   return (
-    <CollapsiblePanel
-      title={title}
-      side={side}
-      collapsed={panelControl.collapsed}
-      onToggleCollapse={panelControl.toggleCollapse}
-      className={className}
+    <Panel
+      id={id}
+      defaultSize={`${defaultWidth}px`}
+      minSize={`${NOTCH_WIDTH}px`}
+      maxSize={`${MAX_EXPANDED_WIDTH}px`}
+      className="overflow-hidden"
+      panelRef={(ref) => {
+        panel.ref.current = ref;
+      }}
     >
-      {children}
-    </CollapsiblePanel>
+      <CollapsiblePanel
+        title={title}
+        side={side}
+        collapsed={panel.collapsed}
+        onToggleCollapse={panel.toggleCollapse}
+        headerRight={headerRight}
+      >
+        {children}
+      </CollapsiblePanel>
+    </Panel>
   );
 }
 

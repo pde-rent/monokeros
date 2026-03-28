@@ -1,44 +1,44 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { WarningIcon } from '@phosphor-icons/react';
-import { Dialog, Button, Input } from '@monokeros/ui';
-import { api } from '@/lib/api-client';
-import { useWorkspaceStore } from '@/stores/workspace-store';
+import { useState } from "react";
+import { WarningIcon } from "@phosphor-icons/react";
+import { Dialog, Button, Input, FormError } from "@monokeros/ui";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onDeleted: () => void;
-  workspace: { id: string; slug: string; displayName: string };
+  workspace: { _id?: string; id?: string; slug: string; displayName: string };
 }
 
 export function DeleteWorkspaceDialog({ open, onClose, onDeleted, workspace }: Props) {
-  const [confirmText, setConfirmText] = useState('');
+  const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { removeWorkspace } = useWorkspaceStore();
+  const [error, setError] = useState("");
+  const removeWorkspace = useMutation(api.workspaces.remove);
 
   const canConfirm = confirmText === workspace.slug;
 
   async function handleDelete() {
     if (!canConfirm) return;
-    setError('');
+    setError("");
     setLoading(true);
     try {
-      await api.workspaces.delete(workspace.slug, confirmText);
-      removeWorkspace(workspace.id);
+      const wsId = (workspace as any)._id ?? (workspace as any).id;
+      await removeWorkspace({ workspaceId: wsId, confirmName: workspace.slug } as any);
       onDeleted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete workspace');
+      setError(err instanceof Error ? err.message : "Failed to delete workspace");
     } finally {
       setLoading(false);
     }
   }
 
   function handleClose() {
-    setConfirmText('');
-    setError('');
+    setConfirmText("");
+    setError("");
     onClose();
   }
 
@@ -51,11 +51,7 @@ export function DeleteWorkspaceDialog({ open, onClose, onDeleted, workspace }: P
       width={420}
     >
       <div className="space-y-4">
-        {error && (
-          <div className="border border-red bg-red-light px-3 py-2 text-xs text-red rounded-sm">
-            {error}
-          </div>
-        )}
+        <FormError error={error} />
 
         <p className="text-xs text-fg-2 leading-relaxed">
           This action <strong className="text-fg">cannot be undone</strong>. This will permanently
@@ -84,7 +80,7 @@ export function DeleteWorkspaceDialog({ open, onClose, onDeleted, workspace }: P
             disabled={!canConfirm || loading}
             onClick={handleDelete}
           >
-            {loading ? 'Deleting...' : 'Delete this workspace'}
+            {loading ? "Deleting..." : "Delete this workspace"}
           </Button>
         </div>
       </div>

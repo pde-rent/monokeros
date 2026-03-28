@@ -1,6 +1,6 @@
-import type { Node, Edge } from '@xyflow/react';
-import type { Member, Team, Project } from '@monokeros/types';
-import { DiagramViewMode } from '@monokeros/types';
+import type { Node, Edge } from "@xyflow/react";
+import type { Member, Team, Project } from "@monokeros/types";
+import { DiagramViewMode } from "@monokeros/types";
 
 // Layout constants for team group containers
 const GROUP_WIDTH = 260;
@@ -21,16 +21,15 @@ export function buildNodesAndEdges(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  const agents = members.filter((m) => m.type === 'agent');
-  const humans = members.filter((m) => m.type === 'human');
+  const agents = members.filter((m) => m.type === "agent");
+  const humans = members.filter((m) => m.type === "human");
   const standaloneAgents = agents.filter((a) => a.teamId === null);
 
   const teamSpacing = 320;
 
   // Apply team filter
-  const filteredTeams = teamFilter.length > 0
-    ? teams.filter((t) => teamFilter.includes(t.type))
-    : teams;
+  const filteredTeams =
+    teamFilter.length > 0 ? teams.filter((t) => teamFilter.includes(t.type)) : teams;
 
   // Standalone agents (no team) — positioned above team groups
   const standaloneBaseY = viewMode === DiagramViewMode.MANAGEMENT ? 90 : 0;
@@ -39,12 +38,12 @@ export function buildNodesAndEdges(
     const x = totalTeamWidth / 2 + 100 - (standaloneAgents.length * 200) / 2 + idx * 200;
     nodes.push({
       id: agent.id,
-      type: 'agent',
+      type: "agent",
       position: { x, y: standaloneBaseY },
       data: {
         ...agent,
-        teamColor: 'var(--color-accent-purple)',
-        teamName: 'System',
+        teamColor: "var(--color-accent-purple)",
+        teamName: "System",
         isSystem: true,
       },
     });
@@ -56,8 +55,8 @@ export function buildNodesAndEdges(
         id: `e-system-${agent.id}-${lead.id}`,
         source: agent.id,
         target: lead.id,
-        type: 'smoothstep',
-        style: { stroke: 'var(--color-purple)', strokeWidth: 1, strokeDasharray: '4 4' },
+        type: "smoothstep",
+        style: { stroke: "var(--color-purple)", strokeWidth: 1, strokeDasharray: "4 4" },
       });
     }
   });
@@ -71,7 +70,9 @@ export function buildNodesAndEdges(
     // Find lead and agents (apply status filter)
     const teamAgents = agents.filter((a) => a.teamId === team.id);
     const lead = teamAgents.find((a) => a.isLead);
-    const teamMembers = teamAgents.filter((a) => !a.isLead && (statusFilter.length === 0 || statusFilter.includes(a.status)));
+    const teamMembers = teamAgents.filter(
+      (a) => !a.isLead && (statusFilter.length === 0 || statusFilter.includes(a.status)),
+    );
     const showLead = lead && (statusFilter.length === 0 || statusFilter.includes(lead.status));
 
     // Calculate group height based on children
@@ -87,7 +88,7 @@ export function buildNodesAndEdges(
     // Team group container node
     nodes.push({
       id: team.id,
-      type: 'teamGroup',
+      type: "teamGroup",
       position: { x, y: baseY },
       style: { width: GROUP_WIDTH, height: groupHeight },
       data: {
@@ -103,9 +104,9 @@ export function buildNodesAndEdges(
 
       nodes.push({
         id: lead.id,
-        type: 'leadAgent',
+        type: "leadAgent",
         parentId: team.id,
-        extent: 'parent',
+        extent: "parent",
         position: { x: leadRelX, y: LEAD_REL_Y },
         data: {
           ...lead,
@@ -119,9 +120,9 @@ export function buildNodesAndEdges(
       teamMembers.forEach((agent, agentIdx) => {
         nodes.push({
           id: agent.id,
-          type: 'agent',
+          type: "agent",
           parentId: team.id,
-          extent: 'parent',
+          extent: "parent",
           position: { x: agentRelX, y: AGENT_START_Y + agentIdx * AGENT_STEP_Y },
           data: {
             ...agent,
@@ -135,9 +136,9 @@ export function buildNodesAndEdges(
             id: `e-${lead.id}-${agent.id}`,
             source: lead.id,
             target: agent.id,
-            type: 'smoothstep',
-            style: { stroke: 'var(--color-edge)', strokeWidth: 1.5 },
-            animated: agent.status === 'working',
+            type: "smoothstep",
+            style: { stroke: "var(--color-edge)", strokeWidth: 1.5 },
+            animated: agent.status === "working",
           });
         }
       });
@@ -155,8 +156,8 @@ export function buildNodesAndEdges(
             id: `e-cross-${leads[i].id}-${leads[j].id}`,
             source: leads[i].id,
             target: leads[j].id,
-            type: 'smoothstep',
-            style: { stroke: 'var(--color-blue)', strokeWidth: 1, strokeDasharray: '5 5' },
+            type: "smoothstep",
+            style: { stroke: "var(--color-blue)", strokeWidth: 1, strokeDasharray: "5 5" },
           });
         }
       }
@@ -167,13 +168,13 @@ export function buildNodesAndEdges(
   if (viewMode === DiagramViewMode.MANAGEMENT) {
     const filteredTeamIds = new Set(filteredTeams.map((t) => t.id));
     const visibleHumans = humans.filter((h) =>
-      h.supervisedTeamIds.some((tid) => filteredTeamIds.has(tid))
+      h.supervisedTeamIds.some((tid) => filteredTeamIds.has(tid)),
     );
     visibleHumans.forEach((human, idx) => {
       const x = 100 + idx * 400;
       nodes.push({
         id: human.id,
-        type: 'human',
+        type: "human",
         position: { x, y: 20 },
         data: {
           ...human,
@@ -190,8 +191,8 @@ export function buildNodesAndEdges(
             id: `e-supervise-${human.id}-${team.leadId}`,
             source: human.id,
             target: team.leadId,
-            type: 'smoothstep',
-            style: { stroke: 'var(--color-purple)', strokeWidth: 2 },
+            type: "smoothstep",
+            style: { stroke: "var(--color-purple)", strokeWidth: 2 },
           });
         }
       });
@@ -209,7 +210,7 @@ export function buildNodesAndEdges(
     });
     // Merge project info into existing agent/lead nodes
     for (const node of nodes) {
-      if ((node.type === 'agent' || node.type === 'leadAgent') && memberProjects.has(node.id)) {
+      if ((node.type === "agent" || node.type === "leadAgent") && memberProjects.has(node.id)) {
         node.data = { ...node.data, projects: memberProjects.get(node.id) };
       }
     }

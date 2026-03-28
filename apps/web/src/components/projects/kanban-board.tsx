@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -10,12 +10,13 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
-} from '@dnd-kit/core';
-import { Task, TaskStatus } from '@monokeros/types';
-import { TASK_STATUS_COLUMNS } from '@monokeros/constants';
-import { useMembers, useTeams, useMoveTask } from '@/hooks/use-queries';
-import { KanbanColumn } from './kanban-column';
-import { TaskCard } from './task-card';
+} from "@dnd-kit/core";
+import { Task, TaskStatus } from "@monokeros/types";
+import { TASK_STATUS_COLUMNS } from "@monokeros/constants";
+import { useMembers, useTeams, useMoveTask } from "@/hooks/use-queries";
+import { useWorkspaceId } from "@/hooks/use-workspace";
+import { KanbanColumn } from "./kanban-column";
+import { TaskCard } from "./task-card";
 
 interface Props {
   tasks: Task[];
@@ -26,6 +27,7 @@ const noop = () => {};
 
 export const KanbanBoard = React.memo(function KanbanBoard({ tasks, onTaskClick }: Props) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const wid = useWorkspaceId();
   const { data: members } = useMembers();
   const { data: teams } = useTeams();
   const moveTask = useMoveTask();
@@ -39,26 +41,33 @@ export const KanbanBoard = React.memo(function KanbanBoard({ tasks, onTaskClick 
     return grouped;
   }, [tasks]);
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === event.active.id);
-    if (task) setActiveTask(task);
-  }, [tasks]);
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const task = tasks.find((t) => t.id === event.active.id);
+      if (task) setActiveTask(task);
+    },
+    [tasks],
+  );
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveTask(null);
-    const { active, over } = event;
-    if (!over) return;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveTask(null);
+      const { active, over } = event;
+      if (!over) return;
 
-    const taskId = active.id as string;
-    const newStatus = over.id as string;
-    const validStatuses = Object.values(TaskStatus) as string[];
-    if (!validStatuses.includes(newStatus)) return;
+      const taskId = active.id as string;
+      const newStatus = over.id as string;
+      const validStatuses = Object.values(TaskStatus) as string[];
+      if (!validStatuses.includes(newStatus)) return;
 
-    const task = tasks.find((t) => t.id === taskId);
-    if (task && task.status !== newStatus) {
-      moveTask.mutate({ id: taskId, status: newStatus as TaskStatus });
-    }
-  }, [tasks, moveTask]);
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && task.status !== newStatus) {
+        if (wid)
+          moveTask.mutate({ workspaceId: wid, taskId: taskId as any, status: newStatus as any });
+      }
+    },
+    [tasks, moveTask],
+  );
 
   return (
     <DndContext
@@ -82,7 +91,9 @@ export const KanbanBoard = React.memo(function KanbanBoard({ tasks, onTaskClick 
       </div>
 
       <DragOverlay>
-        {activeTask && <TaskCard task={activeTask} onClick={noop} isDragging members={members} teams={teams} />}
+        {activeTask && (
+          <TaskCard task={activeTask} onClick={noop} isDragging members={members} teams={teams} />
+        )}
       </DragOverlay>
     </DndContext>
   );

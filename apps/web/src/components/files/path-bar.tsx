@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { CaretRightIcon, FolderOpenIcon } from '@phosphor-icons/react';
+import { useState, useRef, useEffect } from "react";
+import { CaretRightIcon, FolderOpenIcon } from "@phosphor-icons/react";
 
 interface Props {
   segments: string[];
@@ -10,7 +10,7 @@ interface Props {
 
 export function PathBar({ segments, onNavigate }: Props) {
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
+  const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -21,14 +21,14 @@ export function PathBar({ segments, onNavigate }: Props) {
   }, [editing]);
 
   function handleStartEdit() {
-    setEditValue('/' + segments.join('/'));
+    setEditValue("/" + segments.join("/"));
     setEditing(true);
   }
 
   function handleSubmitEdit() {
     setEditing(false);
     // Parse the typed path and navigate
-    const parts = editValue.split('/').filter(Boolean);
+    const parts = editValue.split("/").filter(Boolean);
     // Find how deep we need to go
     for (let i = 0; i < parts.length && i < segments.length; i++) {
       if (parts[i] !== segments[i]) {
@@ -40,9 +40,9 @@ export function PathBar({ segments, onNavigate }: Props) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSubmitEdit();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setEditing(false);
     }
   }
@@ -68,18 +68,12 @@ export function PathBar({ segments, onNavigate }: Props) {
         />
       ) : (
         <>
-          <button
-            onClick={() => handleStartEdit()}
-            className="shrink-0 text-fg-3 hover:text-fg"
-          >
+          <button onClick={() => handleStartEdit()} className="shrink-0 text-fg-3 hover:text-fg">
             <FolderOpenIcon size={14} weight="fill" />
           </button>
 
           {/* Root segment */}
-          <button
-            onClick={() => onNavigate(0)}
-            className="shrink-0 px-1 text-fg-2 hover:text-blue"
-          >
+          <button onClick={() => onNavigate(0)} className="shrink-0 px-1 text-fg-2 hover:text-blue">
             Root
           </button>
 

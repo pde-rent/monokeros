@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useSyncExternalStore, useMemo } from 'react';
+import { useSyncExternalStore, useMemo } from "react";
 
 type StoreApi<S, A> = {
   getSnapshot: () => S;
@@ -16,13 +16,22 @@ export function createStore<S extends object, A extends object>(
   let state = initialState;
   const listeners = new Set<() => void>();
 
-  function emit() { listeners.forEach((l) => l()); }
-  function getSnapshot() { return state; }
+  function emit() {
+    listeners.forEach((l) => l());
+  }
+  function getSnapshot() {
+    return state;
+  }
   function subscribe(listener: () => void) {
     listeners.add(listener);
-    return () => { listeners.delete(listener); };
+    return () => {
+      listeners.delete(listener);
+    };
   }
   function setState(partial: Partial<S>) {
+    // Skip no-op updates to prevent infinite render loops
+    const keys = Object.keys(partial) as (keyof S)[];
+    if (keys.length > 0 && keys.every((k) => state[k] === partial[k])) return;
     state = { ...state, ...partial };
     emit();
   }

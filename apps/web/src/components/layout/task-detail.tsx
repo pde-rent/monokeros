@@ -1,11 +1,24 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { KanbanIcon, ChatCircleIcon, FileTextIcon, BuildingsIcon, CheckCircleIcon, XCircleIcon } from '@phosphor-icons/react';
-import { useTasks, useMembers, useTeams, useProjects, useSubmitAcceptance } from '@/hooks/use-queries';
-import { useAgencyNavigation } from '@/hooks/use-agency-navigation';
-import { ColorDot, StatusBadge, Badge, PanelSection } from '@monokeros/ui';
-import { ThinkingThread } from '@/components/chat/thinking-thread';
+import { useState } from "react";
+import {
+  KanbanIcon,
+  ChatCircleIcon,
+  FileTextIcon,
+  BuildingsIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@phosphor-icons/react";
+import {
+  useTasks,
+  useMembers,
+  useTeams,
+  useProjects,
+  useSubmitAcceptance,
+} from "@/hooks/use-queries";
+import { useAgencyNavigation } from "@/hooks/use-agency-navigation";
+import { ColorDot, StatusBadge, Badge, PanelSection } from "@monokeros/ui";
+import { ThinkingThread } from "@/components/chat/thinking-thread";
 import {
   PRIORITY_COLORS,
   TASK_STATUS_LABELS,
@@ -14,11 +27,12 @@ import {
   CONSENSUS_STATE_LABELS,
   HUMAN_ACCEPTANCE_STATUS_LABELS,
   HUMAN_ACCEPTANCE_STATUS_COLORS,
-} from '@monokeros/constants';
-import { TaskStatus, HumanAcceptanceStatus } from '@monokeros/types';
-import { formatLabel, formatRelativeTime } from '@monokeros/utils';
-import { MemberLink } from '@/components/shared/member-link';
-import { NavAction } from './nav-action';
+} from "@monokeros/constants";
+import { TaskStatus, HumanAcceptanceStatus } from "@monokeros/types";
+import { formatLabel, formatRelativeTime } from "@monokeros/utils";
+import { MemberLink } from "@/components/shared/member-link";
+import { NavAction } from "./nav-action";
+import { useWorkspaceId } from "@/hooks/use-workspace";
 
 interface Props {
   taskId: string;
@@ -29,10 +43,11 @@ export function TaskDetail({ taskId }: Props) {
   const { data: members } = useMembers();
   const { data: teams } = useTeams();
   const { data: projects } = useProjects();
+  const wid = useWorkspaceId();
   const nav = useAgencyNavigation();
   const submitAcceptance = useSubmitAcceptance();
 
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState("");
 
   const task = tasks?.find((t) => t.id === taskId);
   if (!task) return null;
@@ -43,8 +58,8 @@ export function TaskDetail({ taskId }: Props) {
   const depTasks = tasks?.filter((t) => task.dependencies.includes(t.id)) ?? [];
 
   const isAwaitingAcceptance = task.status === TaskStatus.AWAITING_ACCEPTANCE;
-  const hasResolvedAcceptance = task.humanAcceptance &&
-    task.humanAcceptance.status !== HumanAcceptanceStatus.PENDING;
+  const hasResolvedAcceptance =
+    task.humanAcceptance && task.humanAcceptance.status !== HumanAcceptanceStatus.PENDING;
   const reviewer = task.humanAcceptance?.reviewerId
     ? members?.find((m) => m.id === task.humanAcceptance!.reviewerId)
     : null;
@@ -57,16 +72,12 @@ export function TaskDetail({ taskId }: Props) {
           <span>{task.id}</span>
           {task.offloadable && <Badge className="text-[8px] px-1">Offloadable</Badge>}
         </div>
-        <div className="mt-0.5 text-xs font-semibold text-fg leading-tight">
-          {task.title}
-        </div>
+        <div className="mt-0.5 text-xs font-semibold text-fg leading-tight">{task.title}</div>
       </PanelSection>
 
       {/* Status */}
       <PanelSection title="Status">
-        <Badge className="capitalize text-fg">
-          {TASK_STATUS_LABELS[task.status]}
-        </Badge>
+        <Badge className="capitalize text-fg">{TASK_STATUS_LABELS[task.status]}</Badge>
       </PanelSection>
 
       {/* Priority */}
@@ -95,23 +106,21 @@ export function TaskDetail({ taskId }: Props) {
       {/* Team */}
       {team && (
         <PanelSection title="Team">
-          <div className="text-[10px]" style={{ color: team.color }}>{team.name}</div>
+          <div className="text-[10px]" style={{ color: team.color }}>
+            {team.name}
+          </div>
         </PanelSection>
       )}
 
       {/* Phase */}
       <PanelSection title="Phase">
-        <div className="text-[10px] text-fg">
-          {formatLabel(task.phase)}
-        </div>
+        <div className="text-[10px] text-fg">{formatLabel(task.phase)}</div>
       </PanelSection>
 
       {/* Description */}
       {task.description && (
         <PanelSection title="Description">
-          <p className="text-[9px] text-fg leading-relaxed">
-            {task.description}
-          </p>
+          <p className="text-[9px] text-fg leading-relaxed">{task.description}</p>
         </PanelSection>
       )}
 
@@ -122,7 +131,7 @@ export function TaskDetail({ taskId }: Props) {
             {depTasks.map((dep) => (
               <div key={dep.id} className="flex items-center gap-1.5 text-[9px]">
                 <ColorDot
-                  color={dep.status === 'done' ? 'var(--color-green)' : 'var(--color-orange)'}
+                  color={dep.status === "done" ? "var(--color-green)" : "var(--color-orange)"}
                   size="xs"
                 />
                 <span className="text-fg-2">{dep.id}</span>
@@ -137,7 +146,10 @@ export function TaskDetail({ taskId }: Props) {
       {task.crossValidation && (
         <PanelSection title="Cross-Validation">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium" style={{ color: CONFIDENCE_COLORS[task.crossValidation.confidence] }}>
+            <span
+              className="text-[10px] font-medium"
+              style={{ color: CONFIDENCE_COLORS[task.crossValidation.confidence] }}
+            >
               {task.crossValidation.agreementScore}%
             </span>
             <StatusBadge
@@ -171,7 +183,15 @@ export function TaskDetail({ taskId }: Props) {
               />
               <div className="mt-1.5 flex gap-1.5">
                 <button
-                  onClick={() => submitAcceptance.mutate({ id: task.id, action: 'accept', feedback: feedback || undefined })}
+                  onClick={() =>
+                    wid &&
+                    submitAcceptance.mutate({
+                      workspaceId: wid,
+                      taskId: task.id as any,
+                      action: "accept",
+                      feedback: feedback || undefined,
+                    })
+                  }
                   disabled={submitAcceptance.isPending}
                   className="flex items-center gap-1 rounded bg-green px-2 py-1 text-[10px] font-medium text-white transition-colors hover:bg-green/80 disabled:opacity-50"
                 >
@@ -179,7 +199,15 @@ export function TaskDetail({ taskId }: Props) {
                   Accept
                 </button>
                 <button
-                  onClick={() => submitAcceptance.mutate({ id: task.id, action: 'reject', feedback: feedback || undefined })}
+                  onClick={() =>
+                    wid &&
+                    submitAcceptance.mutate({
+                      workspaceId: wid,
+                      taskId: task.id as any,
+                      action: "reject",
+                      feedback: feedback || undefined,
+                    })
+                  }
                   disabled={submitAcceptance.isPending}
                   className="flex items-center gap-1 rounded bg-red px-2 py-1 text-[10px] font-medium text-white transition-colors hover:bg-red/80 disabled:opacity-50"
                 >
@@ -198,9 +226,7 @@ export function TaskDetail({ taskId }: Props) {
                 className="px-1"
               />
               {reviewer && (
-                <div className="mt-1 text-[9px] text-fg-2">
-                  Reviewed by {reviewer.name}
-                </div>
+                <div className="mt-1 text-[9px] text-fg-2">Reviewed by {reviewer.name}</div>
               )}
               {task.humanAcceptance.feedback && (
                 <p className="mt-1 text-[8px] text-fg-2 leading-relaxed">

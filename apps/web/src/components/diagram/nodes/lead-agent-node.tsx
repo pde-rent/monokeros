@@ -1,11 +1,22 @@
-import { memo } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { CrownIcon } from '@phosphor-icons/react';
-import type { MemberStatus } from '@monokeros/types';
-import { StatusBadge, StatusIndicator } from '@monokeros/ui';
+import { memo } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { CrownIcon } from "@phosphor-icons/react";
+import type { MemberStatus } from "@monokeros/types";
+import { StatusBadge, StatusIndicator } from "@monokeros/ui";
 
 function LeadAgentNodeComponent({ data }: NodeProps) {
-  const { name, title, status, teamColor, avatarUrl, stats, highlighted, faded, currentProjectId, projects } = data as {
+  const {
+    name,
+    title,
+    status,
+    teamColor,
+    avatarUrl,
+    stats,
+    highlighted,
+    faded,
+    currentProjectId,
+    projects,
+  } = data as {
     name: string;
     title: string;
     status: MemberStatus;
@@ -21,7 +32,7 @@ function LeadAgentNodeComponent({ data }: NodeProps) {
   return (
     <div
       className={`w-[180px] border bg-elevated p-3 transition-all rounded-sm ${
-        highlighted ? 'border-blue shadow-lg' : 'border-edge'
+        highlighted ? "border-blue shadow-lg" : "border-edge"
       }`}
       style={{ opacity: faded ? 0.3 : 1 }}
     >
@@ -44,7 +55,12 @@ function LeadAgentNodeComponent({ data }: NodeProps) {
       {projects && projects.length > 0 ? (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {projects.map((p) => (
-            <StatusBadge key={p.name} label={p.name} color={p.color} className="text-[9px] px-1 py-0.5" />
+            <StatusBadge
+              key={p.name}
+              label={p.name}
+              color={p.color}
+              className="text-[9px] px-1 py-0.5"
+            />
           ))}
         </div>
       ) : currentProjectId ? (

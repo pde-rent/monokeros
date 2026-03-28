@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import type { FileEntry } from '@monokeros/types';
-import { CaretRightIcon, CaretDownIcon } from '@phosphor-icons/react';
-import { getTreeFileIcon, getTreeFileIconColor } from '@/lib/file-icons';
-import { formatFileSize } from '@monokeros/utils';
+import React, { useState } from "react";
+import type { FileEntry } from "@monokeros/types";
+import { CaretRightIcon, CaretDownIcon } from "@phosphor-icons/react";
+import { getTreeFileIcon, getTreeFileIconColor } from "@/lib/file-icons";
+import { formatFileSize } from "@monokeros/utils";
 
 interface Props {
   files: FileEntry[];
@@ -50,7 +50,7 @@ const FileTreeNode = React.memo(function FileTreeNode({
   onContextMenu?: (e: React.MouseEvent, entry: FileEntry | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const isDir = entry.type === 'directory';
+  const isDir = entry.type === "directory";
   const isSelected = entry.path === selectedPath;
 
   function handleClick() {
@@ -62,17 +62,20 @@ const FileTreeNode = React.memo(function FileTreeNode({
   }
 
   const FileIcon = getTreeFileIcon(entry, expanded);
-  const iconColor = isSelected ? 'var(--color-blue)' : getTreeFileIconColor(entry);
+  const iconColor = isSelected ? "var(--color-blue)" : getTreeFileIconColor(entry);
 
   return (
     <div>
       <button
         onClick={handleClick}
-        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(entry); onContextMenu?.(e, entry); }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelect(entry);
+          onContextMenu?.(e, entry);
+        }}
         className={`flex w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left transition-colors ${
-          isSelected
-            ? 'bg-blue-light text-fg'
-            : 'text-fg-2 hover:bg-surface-3 hover:text-fg'
+          isSelected ? "bg-blue-light text-fg" : "text-fg-2 hover:bg-surface-3 hover:text-fg"
         }`}
         style={{ paddingLeft: `${depth * 12 + 6}px` }}
       >
@@ -89,13 +92,13 @@ const FileTreeNode = React.memo(function FileTreeNode({
 
         {/* File/folder icon */}
         <span className="shrink-0" style={{ color: iconColor }}>
-          <FileIcon size={14} weight={isDir ? 'fill' : 'regular'} />
+          <FileIcon size={14} weight={isDir ? "fill" : "regular"} />
         </span>
 
         <span className="min-w-0 flex-1 truncate text-xs">{entry.name}</span>
 
         {!isDir && entry.size > 0 && (
-          <span className={`shrink-0 text-xs ${isSelected ? 'opacity-70' : 'text-fg-3'}`}>
+          <span className={`shrink-0 text-xs ${isSelected ? "opacity-70" : "text-fg-3"}`}>
             {formatFileSize(entry.size)}
           </span>
         )}

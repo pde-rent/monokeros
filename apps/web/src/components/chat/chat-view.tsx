@@ -1,24 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Panel, Group, Separator } from 'react-resizable-panels';
-import { useConversations, useMembers } from '@/hooks/use-queries';
-import { useChatStore } from '@/stores/chat-store';
-import { useUIStore } from '@/stores/ui-store';
-import { ConversationList } from './conversation-list';
-import { ChatPanel } from './chat-panel';
-import { CreateConversationDialog } from './create-conversation-dialog';
-import { EmptyState } from '@monokeros/ui';
-import { CollapsiblePanel, useCollapsiblePanel, PANEL_CONSTANTS } from '@/components/layout/collapsible-panel';
-import { usePopoutPortal } from '@/components/common/popout-portal';
-
-function ResizeHandle() {
-  return (
-    <Separator className="group relative flex items-center justify-center w-px bg-edge hover:bg-blue transition-colors">
-      <div className="absolute inset-y-0 -left-1 -right-1 z-10" />
-    </Separator>
-  );
-}
+import { useEffect, useState } from "react";
+import { Panel, Group } from "react-resizable-panels";
+import { useConversations, useMembers } from "@/hooks/use-queries";
+import { useChatStore } from "@/stores/chat-store";
+import { useUIStore } from "@/stores/ui-store";
+import { ConversationList } from "./conversation-list";
+import { ChatPanel } from "./chat-panel";
+import { CreateConversationDialog } from "./create-conversation-dialog";
+import { EmptyState } from "@monokeros/ui";
+import {
+  CollapsibleSidePanel,
+  useCollapsiblePanel,
+} from "@/components/layout/collapsible-panel";
+import { usePopoutPortal } from "@/components/common/popout-portal";
+import { ResizeHandle } from "@/components/layout/resizable-layout";
 
 interface Props {
   initialMemberId?: string;
@@ -57,17 +53,13 @@ export function ChatView({ initialMemberId, initialConversationId, isPopout }: P
     }
   }, [activeConversationId, conversations, members, setActiveConversation]);
 
-  const activeConversation = conversations?.find(
-    (c) => c.id === activeConversationId,
-  );
-  const activeMember = members?.find(
-    (m) => m.id === activeConversation?.createdBy,
-  );
+  const activeConversation = conversations?.find((c) => c.id === activeConversationId);
+  const activeMember = members?.find((m) => m.id === activeConversation?.createdBy);
 
   // Open detail panel for the active member (agent_dm only)
   useEffect(() => {
-    if (activeConversation?.type === 'agent_dm' && activeMember) {
-      openDetailPanel('agent', activeMember.id);
+    if (activeConversation?.type === "agent_dm" && activeMember) {
+      openDetailPanel("agent", activeMember.id);
     } else {
       closeDetailPanel();
     }
@@ -76,30 +68,20 @@ export function ChatView({ initialMemberId, initialConversationId, isPopout }: P
   return (
     <Group orientation="horizontal" className="h-full">
       {/* Conversation list */}
-      <Panel
-        id="conversations"
-        defaultSize="240px"
-        minSize={`${PANEL_CONSTANTS.NOTCH_WIDTH}px`}
-        maxSize={`${PANEL_CONSTANTS.MAX_EXPANDED_WIDTH}px`}
-        className="overflow-hidden"
-        panelRef={(ref) => { convPanel.ref.current = ref; }}
-      >
-        <CollapsiblePanel
-          title="Conversations"
-          side="left"
-          collapsed={convPanel.collapsed}
-          onToggleCollapse={convPanel.toggleCollapse}
-        >
-          <ConversationList
-            conversations={conversations ?? []}
-            members={members ?? []}
-            activeId={activeConversationId}
-            onSelect={setActiveConversation}
-            onNewConversation={() => setShowCreateDialog(true)}
-            onPopout={isPopout ? undefined : () => chatPopout.open()}
-          />
-        </CollapsiblePanel>
-      </Panel>
+      <CollapsibleSidePanel id="conversations" title="Conversations" side="left" panel={convPanel} defaultWidth={240}>
+        <ConversationList
+          conversations={conversations ?? []}
+          members={members ?? []}
+          activeId={activeConversationId}
+          onSelect={setActiveConversation}
+          onNewConversation={() => setShowCreateDialog(true)}
+          onPopout={isPopout ? undefined : () => chatPopout.open(
+          <div className="h-full w-full overflow-hidden bg-surface">
+            <ChatView isPopout />
+          </div>,
+        )}
+        />
+      </CollapsibleSidePanel>
 
       <ResizeHandle />
 
@@ -117,12 +99,6 @@ export function ChatView({ initialMemberId, initialConversationId, isPopout }: P
         onClose={() => setShowCreateDialog(false)}
         onConversationReady={(id) => setActiveConversation(id)}
       />
-
-      {chatPopout.isOpen && chatPopout.render(
-        <div className="h-full w-full overflow-hidden bg-surface">
-          <ChatView isPopout />
-        </div>
-      )}
     </Group>
   );
 }

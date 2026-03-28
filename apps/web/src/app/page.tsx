@@ -1,45 +1,48 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth-store';
-import { useWorkspaceStore, type WorkspaceInfo } from '@/stores/workspace-store';
-import { Button } from '@monokeros/ui';
-import { CreateWorkspaceDialog } from '@/components/workspace/create-workspace-dialog';
-import { EditWorkspaceDialog } from '@/components/workspace/edit-workspace-dialog';
-import { PencilSimpleIcon } from '@phosphor-icons/react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useConvexAuth, useQuery } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { api } from "../../convex/_generated/api";
+import { Button, Dialog } from "@monokeros/ui";
+import { CreateWorkspaceForm } from "@/components/workspace/create-workspace-form";
+import { EditWorkspaceDialog } from "@/components/workspace/edit-workspace-dialog";
+import { PencilSimpleIcon, PlusIcon } from "@phosphor-icons/react";
+
+interface WorkspaceInfo {
+  _id: string;
+  slug: string;
+  displayName: string;
+  description?: string;
+  branding: { logo: string | null; color: string };
+  industry: string;
+}
 
 export default function WorkspaceSelectorPage() {
   const router = useRouter();
-  const { isAuthenticated, logout } = useAuthStore();
-  const { workspaces } = useWorkspaceStore();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const workspaces = useQuery(api.workspaces.list, isAuthenticated ? {} : "skip");
   const [showCreate, setShowCreate] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<WorkspaceInfo | null>(null);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Wait a tick for auth initialization to complete
-    const timer = setTimeout(() => setReady(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (!isAuthenticated) {
-      router.replace('/login');
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
     }
-  }, [ready, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router]);
 
-  if (!ready || !isAuthenticated) return null;
+  if (isLoading || !isAuthenticated) return null;
 
-  function handleCreated(ws: WorkspaceInfo) {
+  function handleCreated(ws: { slug: string }) {
     setShowCreate(false);
     router.push(`/${ws.slug}/org`);
   }
 
   function handleLogout() {
-    logout();
-    router.replace('/login');
+    void signOut();
+    router.replace("/login");
   }
 
   return (
@@ -55,10 +58,10 @@ export default function WorkspaceSelectorPage() {
         </div>
 
         {/* Workspace Cards */}
-        {workspaces.length > 0 && (
+        {workspaces && workspaces.length > 0 && (
           <div className="space-y-2">
             {workspaces.map((ws) => (
-              <div key={ws.id} className="group relative">
+              <div key={ws._id} className="group relative">
                 <button
                   onClick={() => router.push(`/${ws.slug}/org`)}
                   className="flex w-full items-center gap-3 rounded-md border border-edge bg-surface p-4 text-left transition-all hover:border-edge-hover hover:bg-surface-3"
@@ -68,7 +71,11 @@ export default function WorkspaceSelectorPage() {
                     style={{ backgroundColor: ws.branding.color }}
                   >
                     {ws.branding.logo ? (
-                      <img src={ws.branding.logo} alt="" className="h-full w-full object-cover rounded-md" />
+                      <img
+                        src={ws.branding.logo}
+                        alt=""
+                        className="h-full w-full object-cover rounded-md"
+                      />
                     ) : (
                       ws.displayName.charAt(0).toUpperCase()
                     )}
@@ -77,20 +84,17 @@ export default function WorkspaceSelectorPage() {
                     <div className="text-sm font-semibold text-fg">{ws.displayName}</div>
                     <div className="text-xs text-fg-3">/{ws.slug}</div>
                   </div>
-                  <span className="text-xs text-fg-3 capitalize">{ws.role}</span>
                 </button>
-                {ws.role === 'admin' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingWorkspace(ws);
-                    }}
-                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded text-fg-3 opacity-0 transition-opacity hover:bg-surface-3 hover:text-fg group-hover:opacity-100"
-                    title="Edit workspace"
-                  >
-                    <PencilSimpleIcon size={12} weight="bold" />
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingWorkspace(ws as unknown as WorkspaceInfo);
+                  }}
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded text-fg-3 opacity-0 transition-opacity hover:bg-surface-3 hover:text-fg group-hover:opacity-100"
+                  title="Edit workspace"
+                >
+                  <PencilSimpleIcon size={12} weight="bold" />
+                </button>
               </div>
             ))}
           </div>
@@ -120,11 +124,18 @@ export default function WorkspaceSelectorPage() {
       </div>
 
       {/* Create Workspace Modal */}
-      <CreateWorkspaceDialog
+      <Dialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={handleCreated}
-      />
+        title="Create Workspace"
+        icon={<PlusIcon size={14} weight="bold" />}
+        width={480}
+      >
+        <CreateWorkspaceForm
+          onCreated={handleCreated}
+          onCancel={() => setShowCreate(false)}
+        />
+      </Dialog>
 
       {/* Edit Workspace Modal */}
       {editingWorkspace && (

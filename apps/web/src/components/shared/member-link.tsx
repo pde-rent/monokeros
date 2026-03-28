@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import type { Member } from '@monokeros/types';
-import { useTeams } from '@/hooks/use-queries';
-import { useAgencyNavigation } from '@/hooks/use-agency-navigation';
-import { getTeamColor } from '@monokeros/constants';
-import { EntityLink } from '@monokeros/ui';
+import type { Member } from "@monokeros/types";
+import { useTeams } from "@/hooks/use-queries";
+import { useAgencyNavigation } from "@/hooks/use-agency-navigation";
+import { getTeamColor } from "@monokeros/constants";
+import { EntityLink } from "@monokeros/ui";
 
 interface Props {
   member: Member;
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   showAvatar?: boolean;
 }
 
-export function MemberLink({ member, size = 'sm', showAvatar = true }: Props) {
+export function MemberLink({ member, size = "sm", showAvatar = true }: Props) {
   const { data: teams } = useTeams();
   const { goToAgentDiagram, goToAgentConsole } = useAgencyNavigation();
 

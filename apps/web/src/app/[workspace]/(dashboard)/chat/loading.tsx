@@ -10,8 +10,10 @@ export default function Loading() {
       <div className="flex-1 flex flex-col">
         <div className="flex-1 p-4 space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : ''}`}>
-              <div className={`h-16 animate-pulse rounded-sm bg-surface-2 ${i % 2 === 0 ? 'w-1/3' : 'w-2/3'}`} />
+            <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : ""}`}>
+              <div
+                className={`h-16 animate-pulse rounded-sm bg-surface-2 ${i % 2 === 0 ? "w-1/3" : "w-2/3"}`}
+              />
             </div>
           ))}
         </div>

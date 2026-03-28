@@ -1,24 +1,38 @@
-'use client';
+"use client";
 
-import { GearSixIcon } from '@phosphor-icons/react';
-import { Dialog, Button } from '@monokeros/ui';
-import { useSettingsStore } from '@/stores/settings-store';
+import { GearSixIcon, UsersIcon } from "@phosphor-icons/react";
+import { Dialog, Button } from "@monokeros/ui";
+import { useSettingsStore, type WindowBehavior, type BehaviorField } from "@/stores/settings-store";
+import { RolesView } from "../roles/roles-view";
+import { useConvexAuth, useQuery as useConvexQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useParams } from "next/navigation";
+
+const WINDOW_SETTINGS: { key: BehaviorField; label: string }[] = [
+  { key: "chatWindowBehavior", label: "Chat" },
+  { key: "filesWindowBehavior", label: "Files" },
+  { key: "orgWindowBehavior", label: "Org" },
+  { key: "projectsWindowBehavior", label: "Projects" },
+  { key: "docsWindowBehavior", label: "Docs" },
+  { key: "boxesWindowBehavior", label: "Boxes" },
+];
 
 export function SettingsDialog() {
+  const settings = useSettingsStore();
   const {
-    chatWindowBehavior,
-    filesWindowBehavior,
-    orgWindowBehavior,
-    projectsWindowBehavior,
-    docsWindowBehavior,
     settingsDialogOpen,
-    setChatWindowBehavior,
-    setFilesWindowBehavior,
-    setOrgWindowBehavior,
-    setProjectsWindowBehavior,
-    setDocsWindowBehavior,
+    settingsTab,
     closeSettingsDialog,
-  } = useSettingsStore();
+  } = settings;
+
+  const { isAuthenticated } = useConvexAuth();
+  const currentUser = useConvexQuery(api.auth.currentUser, isAuthenticated ? {} : "skip");
+  const { workspace: slug } = useParams<{ workspace: string }>();
+  const role = currentUser?.workspaces?.find((ws) => ws.slug === slug)?.role ?? null;
+  const isAdmin = role === "admin";
+
+  const setTab = (tab: "general" | "members") =>
+    useSettingsStore.getState().openSettingsDialog(tab);
 
   return (
     <Dialog
@@ -26,151 +40,90 @@ export function SettingsDialog() {
       onClose={closeSettingsDialog}
       title="Settings"
       icon={<GearSixIcon size={16} />}
-      width={480}
+      width={420}
     >
-      <div className="space-y-6">
-        {/* Window Behavior Section */}
-        <div>
-          <h3 className="mb-3 text-xs font-semibold uppercase text-fg-2">Window Behavior</h3>
-
-          {/* Chat Windows */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs text-fg-2">Chat windows</label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={chatWindowBehavior === 'in-app' ? 'primary' : 'secondary'}
-                onClick={() => setChatWindowBehavior('in-app')}
-                className="flex-1"
-              >
-                Open in app
-              </Button>
-              <Button
-                size="sm"
-                variant={chatWindowBehavior === 'pop-out' ? 'primary' : 'secondary'}
-                onClick={() => setChatWindowBehavior('pop-out')}
-                className="flex-1"
-              >
-                Pop out
-              </Button>
-            </div>
-            <p className="mt-1 text-[10px] text-fg-3">
-              Default behavior when opening chat conversations
-            </p>
-          </div>
-
-          {/* File Windows */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs text-fg-2">File windows</label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={filesWindowBehavior === 'in-app' ? 'primary' : 'secondary'}
-                onClick={() => setFilesWindowBehavior('in-app')}
-                className="flex-1"
-              >
-                Open in app
-              </Button>
-              <Button
-                size="sm"
-                variant={filesWindowBehavior === 'pop-out' ? 'primary' : 'secondary'}
-                onClick={() => setFilesWindowBehavior('pop-out')}
-                className="flex-1"
-              >
-                Pop out
-              </Button>
-            </div>
-            <p className="mt-1 text-[10px] text-fg-3">
-              Default behavior when opening file previews
-            </p>
-          </div>
-
-          {/* Org Windows */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs text-fg-2">Org windows</label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={orgWindowBehavior === 'in-app' ? 'primary' : 'secondary'}
-                onClick={() => setOrgWindowBehavior('in-app')}
-                className="flex-1"
-              >
-                Open in app
-              </Button>
-              <Button
-                size="sm"
-                variant={orgWindowBehavior === 'pop-out' ? 'primary' : 'secondary'}
-                onClick={() => setOrgWindowBehavior('pop-out')}
-                className="flex-1"
-              >
-                Pop out
-              </Button>
-            </div>
-            <p className="mt-1 text-[10px] text-fg-3">
-              Default behavior when opening org diagram
-            </p>
-          </div>
-
-          {/* Project Windows */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs text-fg-2">Project windows</label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={projectsWindowBehavior === 'in-app' ? 'primary' : 'secondary'}
-                onClick={() => setProjectsWindowBehavior('in-app')}
-                className="flex-1"
-              >
-                Open in app
-              </Button>
-              <Button
-                size="sm"
-                variant={projectsWindowBehavior === 'pop-out' ? 'primary' : 'secondary'}
-                onClick={() => setProjectsWindowBehavior('pop-out')}
-                className="flex-1"
-              >
-                Pop out
-              </Button>
-            </div>
-            <p className="mt-1 text-[10px] text-fg-3">
-              Default behavior when opening project views
-            </p>
-          </div>
-
-          {/* Docs Windows */}
-          <div>
-            <label className="mb-1.5 block text-xs text-fg-2">Documentation windows</label>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={docsWindowBehavior === 'in-app' ? 'primary' : 'secondary'}
-                onClick={() => setDocsWindowBehavior('in-app')}
-                className="flex-1"
-              >
-                Open in app
-              </Button>
-              <Button
-                size="sm"
-                variant={docsWindowBehavior === 'pop-out' ? 'primary' : 'secondary'}
-                onClick={() => setDocsWindowBehavior('pop-out')}
-                className="flex-1"
-              >
-                Pop out
-              </Button>
-            </div>
-            <p className="mt-1 text-[10px] text-fg-3">
-              Default behavior when opening documentation
-            </p>
-          </div>
-        </div>
-
-        {/* Done Button */}
-        <div className="flex justify-end border-t border-edge pt-4">
-          <Button size="sm" variant="primary" onClick={closeSettingsDialog}>
-            Done
-          </Button>
-        </div>
+      {/* Tab bar */}
+      <div className="mb-4 flex gap-0 border-b border-edge -mx-5 px-5">
+        <button
+          onClick={() => setTab("general")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+            settingsTab === "general"
+              ? "text-fg border-b-2 border-accent"
+              : "text-fg-2 hover:text-fg"
+          }`}
+        >
+          <GearSixIcon size={13} />
+          General
+        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setTab("members")}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+              settingsTab === "members"
+                ? "text-fg border-b-2 border-accent"
+                : "text-fg-2 hover:text-fg"
+            }`}
+          >
+            <UsersIcon size={13} />
+            Members
+          </button>
+        )}
       </div>
+
+      {settingsTab === "members" && isAdmin ? (
+        <div className="h-[400px] -mx-5 -mb-5 overflow-hidden">
+          <RolesView />
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {/* Window Behavior Section */}
+          <div>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-fg-3">
+              Open views as
+            </h3>
+            <div className="rounded border border-edge divide-y divide-edge">
+              {WINDOW_SETTINGS.map(({ key, label }) => {
+                const value = settings[key] as WindowBehavior;
+                const onChange = (v: WindowBehavior) => settings.setWindowBehavior(key, v);
+                return (
+                  <div key={key} className="flex items-center justify-between px-3 py-1.5">
+                    <span className="text-xs text-fg">{label}</span>
+                    <div className="flex rounded border border-edge overflow-hidden text-[10px]">
+                      <button
+                        onClick={() => onChange("in-app")}
+                        className={`px-2.5 py-1 transition-colors ${
+                          value === "in-app"
+                            ? "bg-accent text-white"
+                            : "bg-transparent text-fg-2 hover:text-fg"
+                        }`}
+                      >
+                        In App
+                      </button>
+                      <button
+                        onClick={() => onChange("pop-out")}
+                        className={`px-2.5 py-1 border-l border-edge transition-colors ${
+                          value === "pop-out"
+                            ? "bg-accent text-white"
+                            : "bg-transparent text-fg-2 hover:text-fg"
+                        }`}
+                      >
+                        Pop Out
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Done Button */}
+          <div className="flex justify-end border-t border-edge pt-4">
+            <Button size="sm" variant="primary" onClick={closeSettingsDialog}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 }

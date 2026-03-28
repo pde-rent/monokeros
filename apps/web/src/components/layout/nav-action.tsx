@@ -1,4 +1,12 @@
-export function NavAction({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+export function NavAction({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}

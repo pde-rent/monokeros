@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { FolderIcon } from '@phosphor-icons/react';
-import { Avatar } from '@monokeros/ui';
+import { FolderIcon } from "@phosphor-icons/react";
+import { Avatar } from "@monokeros/ui";
 
 interface DriveAvatarProps {
   name: string;
@@ -12,7 +12,7 @@ interface DriveAvatarProps {
 export function DriveAvatar({ name, avatarUrl, color }: DriveAvatarProps) {
   return (
     <div className="relative h-5 w-5 shrink-0">
-      <FolderIcon size={20} weight="fill" color={color ?? 'var(--color-fg-3)'} />
+      <FolderIcon size={20} weight="fill" color={color ?? "var(--color-fg-3)"} />
       {avatarUrl && (
         <img
           src={avatarUrl}

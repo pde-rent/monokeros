@@ -1,10 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { useParams } from 'next/navigation';
-import { MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { Kbd, ListRowButton, Input } from '@monokeros/ui';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useParams } from "next/navigation";
+import { createTextFilter } from "@monokeros/utils";
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { Kbd, ListRowButton, Input } from "@monokeros/ui";
+
+interface Command {
+  id: string;
+  label: string;
+  shortcut: string;
+  href: string;
+}
+
+const filterCommands = createTextFilter<Command>("label");
 
 interface CommandPaletteProps {
   open: boolean;
@@ -13,17 +23,17 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const { workspace: slug } = useParams<{ workspace: string }>();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
 
-  const commands = useMemo(() => {
-    const base = slug ? `/${slug}` : '';
+  const commands = useMemo((): Command[] => {
+    const base = slug ? `/${slug}` : "";
     return [
-      { id: 'org', label: 'Go to Org', shortcut: 'G O', href: `${base}/org` },
-      { id: 'projects', label: 'Go to Projects', shortcut: 'G P', href: `${base}/projects` },
-      { id: 'chat', label: 'Go to Chat', shortcut: 'G C', href: `${base}/chat` },
-      { id: 'files', label: 'Go to Files', shortcut: 'G F', href: `${base}/files` },
+      { id: "org", label: "Go to Org", shortcut: "G O", href: `${base}/org` },
+      { id: "projects", label: "Go to Projects", shortcut: "G P", href: `${base}/projects` },
+      { id: "chat", label: "Go to Chat", shortcut: "G C", href: `${base}/chat` },
+      { id: "files", label: "Go to Files", shortcut: "G F", href: `${base}/files` },
     ];
   }, [slug]);
 
@@ -31,38 +41,36 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     setMounted(true);
   }, []);
 
-  const filteredCommands = commands.filter((cmd) =>
-    cmd.label.toLowerCase().includes(query.toLowerCase())
-  );
+  const filteredCommands = filterCommands(commands, query);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!open) return;
 
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         onClose();
-      } else if (e.key === 'ArrowDown') {
+      } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((prev) => (prev + 1) % filteredCommands.length);
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
-      } else if (e.key === 'Enter' && filteredCommands[selectedIndex]) {
+      } else if (e.key === "Enter" && filteredCommands[selectedIndex]) {
         e.preventDefault();
         window.location.href = filteredCommands[selectedIndex].href;
         onClose();
       }
     },
-    [open, filteredCommands, selectedIndex, onClose]
+    [open, filteredCommands, selectedIndex, onClose],
   );
 
   useEffect(() => {
     if (open) {
-      setQuery('');
+      setQuery("");
       setSelectedIndex(0);
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
     }
   }, [open, handleKeyDown]);
 
@@ -89,9 +97,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         </div>
         <div className="max-h-[300px] overflow-y-auto p-1">
           {filteredCommands.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-fg-3">
-              No commands found
-            </div>
+            <div className="px-3 py-6 text-center text-sm text-fg-3">No commands found</div>
           ) : (
             filteredCommands.map((cmd, index) => (
               <ListRowButton
@@ -128,6 +134,6 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

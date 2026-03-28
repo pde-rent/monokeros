@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from "react";
 
 interface Props {
   code: string;
@@ -23,11 +23,11 @@ export function CodeEditor({ code, language, readOnly = true, onChange }: Props)
 
     // Clean up existing instance
     if (flaskRef.current) {
-      containerRef.current.innerHTML = '';
+      containerRef.current.innerHTML = "";
       flaskRef.current = null;
     }
 
-    const CodeFlaskModule = await import('codeflask');
+    const CodeFlaskModule = await import("codeflask");
     const CodeFlask = CodeFlaskModule.default;
 
     if (!containerRef.current) return;
@@ -61,7 +61,7 @@ export function CodeEditor({ code, language, readOnly = true, onChange }: Props)
     initEditor();
 
     return () => {
-      if (el) el.innerHTML = '';
+      if (el) el.innerHTML = "";
       flaskRef.current = null;
     };
   }, [initEditor]);
@@ -79,10 +79,5 @@ export function CodeEditor({ code, language, readOnly = true, onChange }: Props)
     }
   }, [code]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="code-editor-container h-full w-full overflow-auto"
-    />
-  );
+  return <div ref={containerRef} className="code-editor-container h-full w-full overflow-auto" />;
 }

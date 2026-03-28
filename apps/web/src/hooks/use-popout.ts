@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useCallback, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 
 export interface PopoutOptions {
   /** URL path to navigate to (for fallback window.open). Mutually exclusive with content. */
@@ -28,7 +28,7 @@ interface PopoutResult {
 
 /** Check if Document Picture-in-Picture API is available */
 function isDocumentPiPSupported(): boolean {
-  return typeof window !== 'undefined' && 'documentPictureInPicture' in window;
+  return typeof window !== "undefined" && "documentPictureInPicture" in window;
 }
 
 /**
@@ -77,13 +77,13 @@ export function usePopout() {
       try {
         // Try to get the href for linked stylesheets
         if (styleSheet.href) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
           link.href = styleSheet.href;
           targetWindow.document.head.appendChild(link);
         } else if (styleSheet.cssRules) {
           // Inline styles: create a style element with the rules
-          const style = document.createElement('style');
+          const style = document.createElement("style");
           [...styleSheet.cssRules].forEach((rule) => {
             style.appendChild(document.createTextNode(rule.cssText));
           });
@@ -93,8 +93,8 @@ export function usePopout() {
         // CORS may block access to cssRules from external stylesheets
         // In that case, just link the stylesheet if href is available
         if (styleSheet.href) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
           link.href = styleSheet.href;
           targetWindow.document.head.appendChild(link);
         }
@@ -103,123 +103,138 @@ export function usePopout() {
   }, []);
 
   /** Open using Document Picture-in-Picture API (Chromium) */
-  const openPiP = useCallback(async (options: PopoutOptions): Promise<PopoutResult> => {
-    const { width = 400, height = 500, title } = options;
+  const openPiP = useCallback(
+    async (options: PopoutOptions): Promise<PopoutResult> => {
+      const { width = 400, height = 500, title } = options;
 
-    // Request the PiP window
-    const pipWindow = await window.documentPictureInPicture.requestWindow({
-      width,
-      height,
-    });
+      // Request the PiP window
+      const pipWindow = await window.documentPictureInPicture.requestWindow({
+        width,
+        height,
+      });
 
-    pipWindowRef.current = pipWindow;
+      pipWindowRef.current = pipWindow;
 
-    // Copy styles and theme from parent
-    copyStyles(pipWindow);
-    pipWindow.document.documentElement.className = document.documentElement.className;
+      // Copy styles and theme from parent
+      copyStyles(pipWindow);
+      pipWindow.document.documentElement.className = document.documentElement.className;
 
-    // Set up basic document structure
-    pipWindow.document.body.style.margin = '0';
-    pipWindow.document.body.style.padding = '0';
-    pipWindow.document.body.style.overflow = 'hidden';
-    pipWindow.document.body.style.backgroundColor = 'var(--color-canvas, #1a1a2e)';
+      // Set up basic document structure (height: 100% on html+body for CSS percentage heights)
+      pipWindow.document.documentElement.style.height = "100%";
+      pipWindow.document.body.style.height = "100%";
+      pipWindow.document.body.style.margin = "0";
+      pipWindow.document.body.style.padding = "0";
+      pipWindow.document.body.style.overflow = "hidden";
+      pipWindow.document.body.style.backgroundColor = "var(--color-canvas, #1a1a2e)";
 
-    if (title) pipWindow.document.title = title;
+      if (title) pipWindow.document.title = title;
 
-    // Handle window close
-    pipWindow.addEventListener('pagehide', () => {
-      pipWindowRef.current = null;
-      setIsOpen(false);
-    });
+      // Handle window close
+      pipWindow.addEventListener("pagehide", () => {
+        pipWindowRef.current = null;
+        setIsOpen(false);
+      });
 
-    setIsOpen(true);
+      setIsOpen(true);
 
-    // Return control to caller for React rendering
-    return { isPip: true, close, window: pipWindow };
-  }, [close, copyStyles]);
+      // Return control to caller for React rendering
+      return { isPip: true, close, window: pipWindow };
+    },
+    [close, copyStyles],
+  );
 
   /** Open using traditional window.open() (Firefox/Safari fallback) */
-  const openFallback = useCallback((options: PopoutOptions): PopoutResult => {
-    const { path, width = 800, height = 600, title = 'MonokerOS' } = options;
-    const workspace = params.workspace || '';
+  const openFallback = useCallback(
+    (options: PopoutOptions): PopoutResult => {
+      const { path, width = 800, height = 600, title = "MonokerOS" } = options;
+      const workspace = params.workspace || "";
 
-    // Calculate center position
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+      // Calculate center position
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
 
-    // Determine URL: use provided path or about:blank for content mode
-    const url = path ? `/${workspace}${path}` : 'about:blank';
+      // Determine URL: use provided path or about:blank for content mode
+      const url = path ? `/${workspace}${path}` : "about:blank";
 
-    // Open as a popup window
-    const popup = window.open(
-      url,
-      '_blank',
-      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
-    );
+      // Open as a popup window
+      const popup = window.open(
+        url,
+        "_blank",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`,
+      );
 
-    if (!popup) {
-      console.warn('Popout blocked. Please allow popups for this site.');
-      return { isPip: false, close, window: null };
-    }
-
-    fallbackWindowRef.current = popup;
-
-    // Only set up document if we're in content mode (not URL mode)
-    if (!path) {
-      // Copy styles and theme from parent
-      copyStyles(popup);
-      popup.document.documentElement.className = document.documentElement.className;
-
-      // Set up basic document structure
-      popup.document.body.style.margin = '0';
-      popup.document.body.style.padding = '0';
-      popup.document.body.style.overflow = 'hidden';
-      popup.document.title = title;
-    }
-
-    // Handle window close
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    pollIntervalRef.current = setInterval(() => {
-      if (popup.closed) {
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-        fallbackWindowRef.current = null;
-        setIsOpen(false);
+      if (!popup) {
+        // eslint-disable-next-line no-console
+        console.warn("Popout blocked. Please allow popups for this site.");
+        return { isPip: false, close, window: null };
       }
-    }, 500);
 
-    setIsOpen(true);
+      fallbackWindowRef.current = popup;
 
-    // Return null window for URL mode (caller can't render into it)
-    return { isPip: false, close, window: path ? null : popup };
-  }, [close, copyStyles, params.workspace]);
+      // Only set up document if we're in content mode (not URL mode)
+      if (!path) {
+        // Copy styles and theme from parent
+        copyStyles(popup);
+        popup.document.documentElement.className = document.documentElement.className;
+
+        // Set up basic document structure (height: 100% on html+body for CSS percentage heights)
+        popup.document.documentElement.style.height = "100%";
+        popup.document.body.style.height = "100%";
+        popup.document.body.style.margin = "0";
+        popup.document.body.style.padding = "0";
+        popup.document.body.style.overflow = "hidden";
+        popup.document.title = title;
+      }
+
+      // Handle window close
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = setInterval(() => {
+        if (popup.closed) {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          fallbackWindowRef.current = null;
+          setIsOpen(false);
+        }
+      }, 500);
+
+      setIsOpen(true);
+
+      // Return null window for URL mode (caller can't render into it)
+      return { isPip: false, close, window: path ? null : popup };
+    },
+    [close, copyStyles, params.workspace],
+  );
 
   /** Open a popout window with the given options */
-  const openPopout = useCallback(async (options: PopoutOptions): Promise<PopoutResult> => {
-    // Close any existing popout first
-    close();
+  const openPopout = useCallback(
+    async (options: PopoutOptions): Promise<PopoutResult> => {
+      // Close any existing popout first
+      close();
 
-    const { forceFallback = false, path } = options;
+      const { forceFallback = false, path } = options;
 
-    // URL mode: always use fallback (Document PiP can't navigate to URLs)
-    if (path) {
-      return openFallback(options);
-    }
-
-    // Content mode: use Document PiP if supported and not forcing fallback
-    if (!forceFallback && isDocumentPiPSupported()) {
-      try {
-        return await openPiP(options);
-      } catch (err) {
-        console.warn('Document PiP failed, falling back to window.open:', err);
+      // URL mode: always use fallback (Document PiP can't navigate to URLs)
+      if (path) {
         return openFallback(options);
       }
-    }
 
-    return openFallback(options);
-  }, [close, openPiP, openFallback]);
+      // Content mode: use Document PiP if supported and not forcing fallback
+      if (!forceFallback && isDocumentPiPSupported()) {
+        try {
+          return await openPiP(options);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("Document PiP failed, falling back to window.open:", err);
+          return openFallback(options);
+        }
+      }
+
+      return openFallback(options);
+    },
+    [close, openPiP, openFallback],
+  );
 
   return {
     openPopout,

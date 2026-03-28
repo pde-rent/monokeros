@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button, Input, Textarea, DropdownSelect, CheckboxGroup } from '@monokeros/ui';
-import { useTeams, useMembers, useProjects } from '@/hooks/use-queries';
-import { FilterChip } from '@/components/shared/filter-chip';
-import { TaskPriority } from '@monokeros/types';
-import type { CreateTaskInput } from '@monokeros/types';
-import { formatLabel } from '@monokeros/utils';
+import { useState } from "react";
+import { Button, Input, Textarea, DropdownSelect, CheckboxGroup } from "@monokeros/ui";
+import { useTeams, useMembers, useProjects } from "@/hooks/use-queries";
+import { FilterChip } from "@/components/shared/filter-chip";
+import { TaskPriority } from "@monokeros/types";
+import type { CreateTaskInput } from "@monokeros/types";
+import { formatLabel } from "@monokeros/utils";
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: TaskPriority.CRITICAL, label: 'Critical', color: 'var(--color-red)' },
-  { value: TaskPriority.HIGH, label: 'High', color: 'var(--color-orange)' },
-  { value: TaskPriority.MEDIUM, label: 'Medium', color: 'var(--color-yellow)' },
-  { value: TaskPriority.LOW, label: 'Low', color: 'var(--color-blue)' },
-  { value: TaskPriority.NONE, label: 'None', color: 'var(--color-fg-3)' },
+  { value: TaskPriority.CRITICAL, label: "Critical", color: "var(--color-red)" },
+  { value: TaskPriority.HIGH, label: "High", color: "var(--color-orange)" },
+  { value: TaskPriority.MEDIUM, label: "Medium", color: "var(--color-yellow)" },
+  { value: TaskPriority.LOW, label: "Low", color: "var(--color-blue)" },
+  { value: TaskPriority.NONE, label: "None", color: "var(--color-fg-3)" },
 ];
 
 interface Props {
@@ -27,15 +27,15 @@ export function CreateTaskForm({ projectId, onSubmit, onCancel, isSubmitting }: 
   const { data: teams } = useTeams();
   const { data: members } = useMembers();
   const { data: projects } = useProjects();
-  const agents = members?.filter((m) => m.type === 'agent') ?? [];
+  const agents = members?.filter((m) => m.type === "agent") ?? [];
   const project = projects?.find((p) => p.id === projectId);
   const phaseOptions = (project?.phases ?? []).map((p) => ({ value: p, label: formatLabel(p) }));
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
-  const [teamId, setTeamId] = useState('');
-  const [phase, setPhase] = useState('development');
+  const [teamId, setTeamId] = useState("");
+  const [phase, setPhase] = useState("development");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [offloadable, setOffloadable] = useState(false);
 
@@ -53,6 +53,8 @@ export function CreateTaskForm({ projectId, onSubmit, onCancel, isSubmitting }: 
       dependencies: [],
       offloadable,
       requiresHumanAcceptance: false,
+      acceptanceCriteria: [],
+      inputs: [],
     });
   }
 
@@ -61,11 +63,18 @@ export function CreateTaskForm({ projectId, onSubmit, onCancel, isSubmitting }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-      <Textarea label="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+      <Textarea
+        label="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={3}
+      />
 
       {/* Priority */}
       <div>
-        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">Priority</label>
+        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
+          Priority
+        </label>
         <div className="mt-1 flex flex-wrap gap-1">
           {PRIORITY_OPTIONS.map((opt) => (
             <FilterChip
@@ -87,16 +96,13 @@ export function CreateTaskForm({ projectId, onSubmit, onCancel, isSubmitting }: 
         placeholder="Select a team"
       />
 
-      <DropdownSelect
-        label="Phase"
-        value={phase}
-        onChange={setPhase}
-        options={phaseOptions}
-      />
+      <DropdownSelect label="Phase" value={phase} onChange={setPhase} options={phaseOptions} />
 
       {/* Assignees */}
       <div>
-        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">Assignees</label>
+        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
+          Assignees
+        </label>
         <CheckboxGroup
           items={agents}
           selected={assigneeIds}
@@ -119,7 +125,9 @@ export function CreateTaskForm({ projectId, onSubmit, onCancel, isSubmitting }: 
       </label>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
         <Button type="submit" disabled={isSubmitting || !title || !teamId}>
           Create
         </Button>

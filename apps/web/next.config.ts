@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
     '@monokeros/ui',
     '@monokeros/constants',
     '@monokeros/utils',
-    '@monokeros/mock-data',
     '@monokeros/avatar',
   ],
   experimental: {

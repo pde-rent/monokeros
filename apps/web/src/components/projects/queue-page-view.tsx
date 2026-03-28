@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { ProjectViewMode } from '@monokeros/types';
-import { AgentQueueView } from './agent-queue-view';
-import { ProjectPageLayout } from './project-page-layout';
+import { ProjectViewMode } from "@monokeros/types";
+import { AgentQueueView } from "./agent-queue-view";
+import { ProjectPageLayout } from "./project-page-layout";
 
 interface Props {
   projectId?: string;

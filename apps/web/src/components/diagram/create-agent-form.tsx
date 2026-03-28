@@ -1,27 +1,35 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Input, Textarea, DropdownSelect, CheckboxGroup } from '@monokeros/ui';
-import { useTeams } from '@/hooks/use-queries';
-import { useWorkspaceSlug } from '@/hooks/use-workspace-slug';
-import { api } from '@/lib/api-client';
-import { AiProvider } from '@monokeros/types';
-import type { CreateMemberInput, AgentModelConfig, MemberGender } from '@monokeros/types';
-import { ArrowsClockwiseIcon, UploadSimpleIcon, XIcon, UserIcon } from '@phosphor-icons/react';
+import { useState, useEffect, useCallback } from "react";
+import { Button, Input, Textarea, DropdownSelect, CheckboxGroup } from "@monokeros/ui";
+import { useTeams } from "@/hooks/use-queries";
+import { useParams } from "next/navigation";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { AiProvider } from "@monokeros/types";
+import type { CreateMemberInput, AgentModelConfig, MemberGender, AgentRuntimeType } from "@monokeros/types";
+import { ArrowsClockwiseIcon, UploadSimpleIcon, XIcon, UserIcon } from "@phosphor-icons/react";
 
-const PROVIDER_OPTIONS = Object.values(AiProvider).map((p) => ({ value: p, label: p.replace(/_/g, ' ').toUpperCase() }));
+const PROVIDER_OPTIONS = Object.values(AiProvider).map((p) => ({
+  value: p,
+  label: p.replace(/_/g, " ").toUpperCase(),
+}));
 
 const PERMISSION_OPTIONS = [
-  { id: 'create_tasks', label: 'Create / modify tasks' },
-  { id: 'validate_peers', label: 'Validate peer work' },
-  { id: 'manage_phases', label: 'Manage project phases' },
-  { id: 'access_all_files', label: 'Access all files' },
-  { id: 'external_comms', label: 'External communication' },
+  { id: "create_tasks", label: "Create / modify tasks" },
+  { id: "validate_peers", label: "Validate peer work" },
+  { id: "manage_phases", label: "Manage project phases" },
+  { id: "access_all_files", label: "Access all files" },
+  { id: "external_comms", label: "External communication" },
+];
+
+const RUNTIME_OPTIONS = [
+  { value: "openclaw", label: "OpenClaw" },
+  { value: "zeroclaw", label: "ZeroClaw" },
 ];
 
 const GENDER_OPTIONS = [
-  { value: '1', label: 'Male' },
-  { value: '2', label: 'Female' },
+  { value: "1", label: "Male" },
+  { value: "2", label: "Female" },
 ];
 
 interface Props {
@@ -31,52 +39,67 @@ interface Props {
 }
 
 export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
-  const slug = useWorkspaceSlug();
+  const { workspace: slug } = useParams<{ workspace: string }>();
   const { data: teams } = useTeams();
 
-  const [name, setName] = useState('');
-  const [title, setTitle] = useState('');
-  const [specialization, setSpecialization] = useState('');
-  const [soul, setSoul] = useState('');
+  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [soul, setSoul] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
-  const [skillInput, setSkillInput] = useState('');
-  const [teamId, setTeamId] = useState('');
-  const [gender, setGender] = useState<MemberGender | ''>('');
+  const [skillInput, setSkillInput] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [gender, setGender] = useState<MemberGender | "">("");
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
+  const avatar = useImageUpload();
   const [generatedAvatar, setGeneratedAvatar] = useState<string | null>(null);
   const [avatarSeed, setAvatarSeed] = useState<string>(crypto.randomUUID());
+  const [runtimeType, setRuntimeType] = useState<AgentRuntimeType>("openclaw");
+  const [desktop, setDesktop] = useState(true);
   const [showModelConfig, setShowModelConfig] = useState(false);
-  const [providerId, setProviderId] = useState('');
-  const [modelName, setModelName] = useState('');
-  const [apiKeyOverride, setApiKeyOverride] = useState('');
-  const [temperature, setTemperature] = useState('');
-  const [maxTokens, setMaxTokens] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [providerId, setProviderId] = useState("");
+  const [modelName, setModelName] = useState("");
+  const [apiKeyOverride, setApiKeyOverride] = useState("");
+  const [temperature, setTemperature] = useState("");
+  const [maxTokens, setMaxTokens] = useState("");
 
-  // Fetch avatar preview
-  const fetchAvatarPreview = useCallback(async (tid?: string, g?: MemberGender | '', seed?: string) => {
-    if (!slug) return;
-    try {
-      const { avatarUrl } = await api.members.avatarPreview(slug, seed || avatarSeed, tid || undefined, g || undefined);
-      setGeneratedAvatar(avatarUrl);
-    } catch { /* ignore preview failures */ }
-  }, [slug, avatarSeed]);
-
-  // Fetch identity preview (name + gender)
-  const fetchIdentityPreview = useCallback(async (g?: MemberGender) => {
-    if (!slug) return;
-    try {
-      const identity = await api.members.identityPreview(slug, g || undefined);
-      setName(identity.firstName);
-      if (!gender) {
-        // Only set gender if user hasn't explicitly selected one
-        setGender(identity.gender);
+  // Avatar preview via randomuser.me API (client-side, replacing NestJS endpoint)
+  const fetchAvatarPreview = useCallback(
+    async (_tid?: string, g?: MemberGender | "", seed?: string) => {
+      try {
+        const genderParam = g === 1 ? "male" : g === 2 ? "female" : "";
+        const url = `https://randomuser.me/api/?seed=${seed || avatarSeed}${genderParam ? `&gender=${genderParam}` : ""}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        setGeneratedAvatar(data.results?.[0]?.picture?.large ?? null);
+      } catch {
+        /* ignore preview failures */
       }
-      return identity;
-    } catch { /* ignore preview failures */ }
-    return null;
-  }, [slug, gender]);
+    },
+    [avatarSeed],
+  );
+
+  // Identity preview via randomuser.me (client-side)
+  const fetchIdentityPreview = useCallback(
+    async (g?: MemberGender) => {
+      try {
+        const genderParam = g === 1 ? "male" : g === 2 ? "female" : "";
+        const url = `https://randomuser.me/api/?${genderParam ? `gender=${genderParam}` : ""}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const result = data.results?.[0];
+        if (result) {
+          setName(result.name.first);
+          if (!gender) {
+            setGender(result.gender === "male" ? 1 : 2);
+          }
+        }
+      } catch {
+        /* ignore preview failures */
+      }
+    },
+    [gender],
+  );
 
   // Initialize with random name on mount
   useEffect(() => {
@@ -87,65 +110,54 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
 
   // Fetch avatar preview when team or gender changes
   useEffect(() => {
-    if (!uploadedAvatar) {
+    if (!avatar.imageUrl) {
       fetchAvatarPreview(teamId, gender);
     }
-  }, [fetchAvatarPreview, teamId, gender, uploadedAvatar]);
+  }, [fetchAvatarPreview, teamId, gender, avatar.imageUrl]);
 
   // Handle gender change - regenerate avatar with new gender
-  const handleGenderChange = useCallback((newGender: MemberGender | '') => {
+  const handleGenderChange = useCallback((newGender: MemberGender | "") => {
     setGender(newGender);
-    // Avatar will be regenerated in the useEffect
   }, []);
 
-  // Re-roll name only (keeps current gender and avatar seed)
+  // Re-roll name only
   const handleRerollName = useCallback(async () => {
-    if (!slug) return;
-    try {
-      const identity = await api.members.identityPreview(slug, gender || undefined);
-      setName(identity.firstName);
-      // Keep current avatar seed
-    } catch { /* ignore */ }
-  }, [slug, gender]);
+    await fetchIdentityPreview(gender || undefined);
+  }, [fetchIdentityPreview, gender]);
 
   // Re-roll identity (name + gender + new avatar)
   const handleRerollIdentity = useCallback(async () => {
-    if (!slug) return;
     try {
-      const identity = await api.members.identityPreview(slug); // Don't pass gender - get random
-      setName(identity.firstName);
-      setGender(identity.gender);
-      // Generate new avatar seed
-      const newSeed = crypto.randomUUID();
-      setAvatarSeed(newSeed);
-      // Fetch new avatar with new seed and gender
-      const { avatarUrl } = await api.members.avatarPreview(slug, newSeed, teamId || undefined, identity.gender);
-      setGeneratedAvatar(avatarUrl);
-    } catch { /* ignore */ }
-  }, [slug, teamId]);
+      const url = "https://randomuser.me/api/";
+      const res = await fetch(url);
+      const data = await res.json();
+      const result = data.results?.[0];
+      if (result) {
+        setName(result.name.first);
+        const newGender = result.gender === "male" ? 1 : 2;
+        setGender(newGender as MemberGender);
+        const newSeed = crypto.randomUUID();
+        setAvatarSeed(newSeed);
+        setGeneratedAvatar(result.picture.large);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   function handleSkillKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       const value = skillInput.trim();
       if (value && !skills.includes(value)) {
         setSkills([...skills, value]);
       }
-      setSkillInput('');
+      setSkillInput("");
     }
   }
 
   function removeSkill(skill: string) {
     setSkills(skills.filter((s) => s !== skill));
-  }
-
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setUploadedAvatar(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = '';
   }
 
   function buildModelConfig(): AgentModelConfig | null {
@@ -167,16 +179,18 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
       specialization,
       teamId,
       isLead: false,
-      avatarUrl: uploadedAvatar,
+      avatarUrl: avatar.imageUrl,
       gender: gender || undefined,
       identity: { soul, skills, memory: [] },
       permissions,
       modelConfig: buildModelConfig(),
-    });
+      runtime: runtimeType,
+      desktop,
+    } as CreateMemberInput & { runtime?: AgentRuntimeType; desktop?: boolean });
   }
 
   const teamOptions = (teams ?? []).map((t) => ({ value: t.id, label: t.name }));
-  const displayAvatar = uploadedAvatar ?? generatedAvatar;
+  const displayAvatar = avatar.imageUrl ?? generatedAvatar;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -216,12 +230,14 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
             {displayAvatar ? (
               <img src={displayAvatar} alt="" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-fg-3 text-xs">...</div>
+              <div className="flex h-full w-full items-center justify-center text-fg-3 text-xs">
+                ...
+              </div>
             )}
-            {uploadedAvatar && (
+            {avatar.imageUrl && (
               <button
                 type="button"
-                onClick={() => setUploadedAvatar(null)}
+                onClick={avatar.clearImage}
                 className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-surface-1 border border-edge text-fg-3 hover:text-red"
               >
                 <XIcon size={10} weight="bold" />
@@ -230,22 +246,17 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
           </div>
           <div className="flex gap-1.5">
             <input
-              ref={fileInputRef}
+              ref={avatar.fileInputRef}
               type="file"
               accept="image/*"
-              onChange={handleFileUpload}
+              onChange={avatar.handleFileUpload}
               className="hidden"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={avatar.openFilePicker}>
               <UploadSimpleIcon size={14} className="mr-1" />
               Upload
             </Button>
-            {!uploadedAvatar && (
+            {!avatar.imageUrl && (
               <Button
                 type="button"
                 variant="ghost"
@@ -265,8 +276,19 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
       </div>
 
       <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-      <Input label="Specialization" value={specialization} onChange={(e) => setSpecialization(e.target.value)} required />
-      <Textarea label="Soul" value={soul} onChange={(e) => setSoul(e.target.value)} rows={3} required />
+      <Input
+        label="Specialization"
+        value={specialization}
+        onChange={(e) => setSpecialization(e.target.value)}
+        required
+      />
+      <Textarea
+        label="Soul"
+        value={soul}
+        onChange={(e) => setSoul(e.target.value)}
+        rows={3}
+        required
+      />
 
       {/* Skills tag input */}
       <div>
@@ -278,7 +300,11 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
               className="inline-flex items-center gap-1 rounded-sm bg-surface-3 px-2 py-0.5 text-xs text-fg"
             >
               {skill}
-              <button type="button" onClick={() => removeSkill(skill)} className="text-fg-3 hover:text-red">
+              <button
+                type="button"
+                onClick={() => removeSkill(skill)}
+                className="text-fg-3 hover:text-red"
+              >
                 &times;
               </button>
             </span>
@@ -302,16 +328,42 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
       />
 
       <DropdownSelect
+        label="Runtime"
+        value={runtimeType}
+        onChange={(v) => {
+          const rt = (v || "openclaw") as AgentRuntimeType;
+          setRuntimeType(rt);
+          setDesktop(rt === "openclaw");
+        }}
+        options={RUNTIME_OPTIONS}
+      />
+
+      <div>
+        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">Desktop</label>
+        <label className="mt-1 flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={desktop}
+            onChange={(e) => setDesktop(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-edge accent-blue"
+          />
+          <span className="text-xs text-fg-2">Enable desktop environment (VNC + Chrome)</span>
+        </label>
+      </div>
+
+      <DropdownSelect
         label="Gender"
         value={String(gender)}
-        onChange={(v) => handleGenderChange(v ? (Number(v) as MemberGender) : '')}
+        onChange={(v) => handleGenderChange(v ? (Number(v) as MemberGender) : "")}
         options={GENDER_OPTIONS}
         placeholder="Random"
       />
 
       {/* Permissions */}
       <div>
-        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">Permissions</label>
+        <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
+          Permissions
+        </label>
         <CheckboxGroup
           items={PERMISSION_OPTIONS}
           selected={permissions}
@@ -329,7 +381,11 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
           onClick={() => setShowModelConfig(!showModelConfig)}
           className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-fg-3 hover:text-fg-2"
         >
-          <span className={`inline-block transition-transform ${showModelConfig ? 'rotate-90' : ''}`}>&#9654;</span>
+          <span
+            className={`inline-block transition-transform ${showModelConfig ? "rotate-90" : ""}`}
+          >
+            &#9654;
+          </span>
           Model Configuration
         </button>
         {showModelConfig && (
@@ -356,14 +412,14 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
             />
             <div>
               <label className="text-[10px] font-medium uppercase tracking-wider text-fg-3">
-                Temperature {temperature ? `(${temperature})` : ''}
+                Temperature {temperature ? `(${temperature})` : ""}
               </label>
               <input
                 type="range"
                 min="0"
                 max="2"
                 step="0.1"
-                value={temperature || '0.7'}
+                value={temperature || "0.7"}
                 onChange={(e) => setTemperature(e.target.value)}
                 className="mt-1 w-full accent-blue"
               />
@@ -371,7 +427,7 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
             <Input
               label="Max Tokens"
               value={maxTokens}
-              onChange={(e) => setMaxTokens(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) => setMaxTokens(e.target.value.replace(/\D/g, ""))}
               placeholder="e.g. 4096"
               type="text"
               inputMode="numeric"
@@ -381,8 +437,13 @@ export function CreateAgentForm({ onSubmit, onCancel, isSubmitting }: Props) {
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={isSubmitting || !name || !title || !soul || skills.length === 0 || !teamId}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting || !name || !title || !soul || skills.length === 0 || !teamId}
+        >
           Create
         </Button>
       </div>

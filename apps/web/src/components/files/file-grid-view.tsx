@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useEffect } from 'react';
-import type { FileEntry } from '@monokeros/types';
-import { getFileIcon, getFileIconColor } from '@/lib/file-icons';
-import { EmptyState } from '@monokeros/ui';
-import { PathBar } from './path-bar';
+import { useState, useMemo, useEffect } from "react";
+import type { FileEntry } from "@monokeros/types";
+import { getFileIcon, getFileIconColor } from "@/lib/file-icons";
+import { EmptyState } from "@monokeros/ui";
+import { PathBar } from "./path-bar";
 
 interface Props {
   files: FileEntry[];
@@ -19,14 +19,21 @@ interface Props {
 function getFilesAtPath(files: FileEntry[], pathSegments: string[]): FileEntry[] {
   let current = files;
   for (const seg of pathSegments) {
-    const dir = current.find((f) => f.type === 'directory' && f.name === seg);
+    const dir = current.find((f) => f.type === "directory" && f.name === seg);
     if (!dir?.children) return [];
     current = dir.children;
   }
   return current;
 }
 
-export function FileGridView({ files, selectedPath, onSelect, category, ownerId, onContextMenu }: Props) {
+export function FileGridView({
+  files,
+  selectedPath,
+  onSelect,
+  category,
+  ownerId,
+  onContextMenu,
+}: Props) {
   const [currentPath, setCurrentPath] = useState<string[]>([]);
 
   // Reset path when workspace changes
@@ -34,10 +41,7 @@ export function FileGridView({ files, selectedPath, onSelect, category, ownerId,
     setCurrentPath([]);
   }, [category, ownerId]);
 
-  const visibleFiles = useMemo(
-    () => getFilesAtPath(files, currentPath),
-    [files, currentPath],
-  );
+  const visibleFiles = useMemo(() => getFilesAtPath(files, currentPath), [files, currentPath]);
 
   function handleNavigateInto(folder: FileEntry) {
     setCurrentPath([...currentPath, folder.name]);
@@ -94,7 +98,7 @@ function FileGridItem({
   onNavigateInto: (folder: FileEntry) => void;
   onContextMenu?: (e: React.MouseEvent, entry: FileEntry | null) => void;
 }) {
-  const isDir = entry.type === 'directory';
+  const isDir = entry.type === "directory";
   const isSelected = entry.path === selectedPath;
 
   const Icon = getFileIcon(entry);
@@ -114,25 +118,20 @@ function FileGridItem({
     <button
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(e, entry); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu?.(e, entry);
+      }}
       className={`flex h-[88px] w-full flex-col items-center justify-center gap-1.5 rounded-sm p-2 transition-colors ${
-        isSelected
-          ? 'bg-blue-light outline outline-1 outline-blue'
-          : 'hover:bg-surface-3'
+        isSelected ? "bg-blue-light outline outline-1 outline-blue" : "hover:bg-surface-3"
       }`}
       title={entry.name}
     >
-      <Icon
-        size={40}
-        weight={isDir ? 'fill' : 'regular'}
-        color={iconColor}
-        className="shrink-0"
-      />
+      <Icon size={40} weight={isDir ? "fill" : "regular"} color={iconColor} className="shrink-0" />
       <span
         className={`w-full truncate text-center text-xs leading-tight ${
-          isSelected
-            ? 'text-fg'
-            : 'text-fg-2'
+          isSelected ? "text-fg" : "text-fg-2"
         }`}
       >
         {entry.name}

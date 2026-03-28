@@ -1,5 +1,8 @@
-import { useMemo } from 'react';
-import type { Task } from '@monokeros/types';
+import { useMemo } from "react";
+import type { Task } from "@monokeros/types";
+import { createTextFilter } from "@monokeros/utils";
+
+const filterTasks = createTextFilter<Task>("title");
 
 export function useTaskFiltering(
   tasks: Task[] | undefined,
@@ -11,10 +14,7 @@ export function useTaskFiltering(
     if (statusFilter.length > 0) {
       result = result.filter((t) => statusFilter.includes(t.status));
     }
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((t) => t.title.toLowerCase().includes(q));
-    }
+    result = filterTasks(result, search);
     return result;
   }, [tasks, statusFilter, search]);
 }

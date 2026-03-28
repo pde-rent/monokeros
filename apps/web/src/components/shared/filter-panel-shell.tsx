@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { SectionLabel } from '@monokeros/ui';
+import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { SectionLabel } from "@monokeros/ui";
 
 interface Props {
   search: string;
@@ -13,7 +13,7 @@ interface Props {
 export function FilterPanelShell({
   search,
   onSearchChange,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = "Search...",
   children,
 }: Props) {
   return (

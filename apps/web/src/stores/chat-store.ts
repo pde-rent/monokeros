@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { createStore, createStoreHook } from './create-store';
+import { createStore, createStoreHook } from "./create-store";
 
-type ChatViewMode = 'bubbles' | 'list';
+type ChatViewMode = "bubbles" | "list";
 
 export interface ToolCallStatus {
   id: string;
@@ -13,8 +13,6 @@ export interface ToolCallStatus {
 
 interface ChatState {
   activeConversationId: string | null;
-  splitConversationId: string | null;
-  drafts: Record<string, string>;
   streamingConversationId: string | null;
   streamingContent: string;
   thinkingPhase: string | null;
@@ -26,8 +24,6 @@ interface ChatState {
 
 interface ChatActions {
   setActiveConversation: (id: string | null) => void;
-  setSplitConversation: (id: string | null) => void;
-  setDraft: (conversationId: string, content: string) => void;
   setStreaming: (conversationId: string | null, content?: string) => void;
   appendStreamChunk: (chunk: string) => void;
   setThinkingPhase: (phase: string | null) => void;
@@ -40,18 +36,18 @@ interface ChatActions {
 
 const store = createStore<ChatState, ChatActions>(
   {
-    activeConversationId: null, splitConversationId: null,
-    drafts: {}, streamingConversationId: null, streamingContent: '',
-    thinkingPhase: null, activeToolCalls: [], completedToolCalls: [],
-    search: '', chatViewMode: 'bubbles',
+    activeConversationId: null,
+    streamingConversationId: null,
+    streamingContent: "",
+    thinkingPhase: null,
+    activeToolCalls: [],
+    completedToolCalls: [],
+    search: "",
+    chatViewMode: "bubbles",
   },
   (setState, getState) => ({
     setActiveConversation: (id) => setState({ activeConversationId: id }),
-    setSplitConversation: (id) => setState({ splitConversationId: id }),
-    setDraft: (conversationId, content) => {
-      setState({ drafts: { ...getState().drafts, [conversationId]: content } });
-    },
-    setStreaming: (conversationId, content = '') => {
+    setStreaming: (conversationId, content = "") => {
       setState({ streamingConversationId: conversationId, streamingContent: content });
     },
     appendStreamChunk: (chunk) => {
@@ -71,7 +67,7 @@ const store = createStore<ChatState, ChatActions>(
     clearStreamingState: () => {
       setState({
         streamingConversationId: null,
-        streamingContent: '',
+        streamingContent: "",
         thinkingPhase: null,
         activeToolCalls: [],
         completedToolCalls: [],

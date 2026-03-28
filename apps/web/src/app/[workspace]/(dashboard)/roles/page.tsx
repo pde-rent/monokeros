@@ -1,7 +1,9 @@
-'use client';
+"use client";
 
-import { RolesView } from '@/components/roles/roles-view';
+import { redirect } from "next/navigation";
+import { useParams } from "next/navigation";
 
 export default function RolesPage() {
-  return <RolesView />;
+  const { workspace } = useParams<{ workspace: string }>();
+  redirect(`/${workspace}/boxes`);
 }

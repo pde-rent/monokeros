@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import type { Task, Project } from '@monokeros/types';
-import { PRIORITY_COLORS, TASK_STATUS_COLORS, TASK_STATUS_LABELS } from '@monokeros/constants';
-import { EmptyState } from '@monokeros/ui';
+import { useMemo } from "react";
+import type { Task, Project } from "@monokeros/types";
+import { PRIORITY_COLORS, TASK_STATUS_COLORS, TASK_STATUS_LABELS } from "@monokeros/constants";
+import { EmptyState } from "@monokeros/ui";
 
 interface Props {
   tasks: Task[];
@@ -39,7 +39,7 @@ export function GanttChart({ tasks, projects, onTaskClick }: Props) {
     // Group tasks by project
     const projectMap = new Map<string, Task[]>();
     for (const task of tasks) {
-      const key = task.projectId;
+      const key = task.projectId ?? "_detached";
       if (!projectMap.has(key)) projectMap.set(key, []);
       projectMap.get(key)!.push(task);
     }
@@ -65,12 +65,18 @@ export function GanttChart({ tasks, projects, onTaskClick }: Props) {
     if (cursor < timeRange.start) cursor.setMonth(cursor.getMonth() + 1);
 
     while (cursor <= timeRange.end) {
-      const offset = Math.max(0, Math.floor((cursor.getTime() - timeRange.start.getTime()) / (1000 * 60 * 60 * 24)));
+      const offset = Math.max(
+        0,
+        Math.floor((cursor.getTime() - timeRange.start.getTime()) / (1000 * 60 * 60 * 24)),
+      );
       const nextMonth = new Date(cursor);
       nextMonth.setMonth(nextMonth.getMonth() + 1);
-      const endOffset = Math.min(totalDays, Math.floor((nextMonth.getTime() - timeRange.start.getTime()) / (1000 * 60 * 60 * 24)));
+      const endOffset = Math.min(
+        totalDays,
+        Math.floor((nextMonth.getTime() - timeRange.start.getTime()) / (1000 * 60 * 60 * 24)),
+      );
       result.push({
-        label: cursor.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        label: cursor.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
         offset,
         width: endOffset - offset,
       });
@@ -80,9 +86,7 @@ export function GanttChart({ tasks, projects, onTaskClick }: Props) {
   }, [timeRange, totalDays]);
 
   if (tasks.length === 0) {
-    return (
-      <EmptyState>No tasks to display</EmptyState>
-    );
+    return <EmptyState>No tasks to display</EmptyState>;
   }
 
   return (
@@ -105,21 +109,16 @@ export function GanttChart({ tasks, projects, onTaskClick }: Props) {
       {/* Rows */}
       <div>
         {grouped.map(({ project, tasks: projectTasks }) => (
-          <div key={project?.id ?? 'unknown'}>
+          <div key={project?.id ?? "unknown"}>
             {/* Project header */}
             <div className="flex items-center gap-2 border-b border-edge bg-surface-3 px-3 py-1.5">
               {project && (
-                <span
-                  className="h-2 w-2 rounded-sm"
-                  style={{ backgroundColor: project.color }}
-                />
+                <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: project.color }} />
               )}
               <span className="text-xs font-semibold text-fg">
-                {project?.name ?? 'Unknown Project'}
+                {project?.name ?? "Unknown Project"}
               </span>
-              <span className="text-xs text-fg-3">
-                {projectTasks.length} tasks
-              </span>
+              <span className="text-xs text-fg-3">{projectTasks.length} tasks</span>
             </div>
 
             {/* Task rows */}
@@ -153,13 +152,13 @@ export function GanttChart({ tasks, projects, onTaskClick }: Props) {
                   </div>
 
                   {/* Bar area */}
-                  <div className="relative flex-1" style={{ height: '100%' }}>
+                  <div className="relative flex-1" style={{ height: "100%" }}>
                     <div
                       className="absolute top-1/2 h-4 -translate-y-1/2 cursor-pointer rounded-sm transition-opacity hover:opacity-80"
                       style={{
                         left: `${offset * dayWidth}px`,
                         width: `${barWidth * dayWidth}px`,
-                        backgroundColor: TASK_STATUS_COLORS[task.status] ?? 'var(--color-idle)',
+                        backgroundColor: TASK_STATUS_COLORS[task.status] ?? "var(--color-idle)",
                       }}
                       onClick={() => onTaskClick(task.id)}
                       title={`${task.title} (${TASK_STATUS_LABELS[task.status]})`}

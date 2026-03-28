@@ -1,55 +1,45 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/auth-store';
-import { api } from '@/lib/api-client';
-import { Badge, Input } from '@monokeros/ui';
-import { MagnifyingGlassIcon, ArrowLeftIcon, UsersIcon, UsersFourIcon, PackageIcon, SpinnerIcon, FileXIcon } from '@phosphor-icons/react';
-import type { TemplateListing, TemplateCategory } from '@monokeros/templates';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api as convexApi } from "../../../convex/_generated/api";
+import { createTextFilter } from "@monokeros/utils";
+import { Badge, Input } from "@monokeros/ui";
+import {
+  MagnifyingGlassIcon,
+  ArrowLeftIcon,
+  UsersIcon,
+  UsersFourIcon,
+  PackageIcon,
+  SpinnerIcon,
+  FileXIcon,
+} from "@phosphor-icons/react";
 
-const CATEGORIES: { id: TemplateCategory | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'software', label: 'Software' },
-  { id: 'legal', label: 'Legal' },
-  { id: 'marketing', label: 'Marketing' },
-  { id: 'consulting', label: 'Consulting' },
-  { id: 'custom', label: 'Custom' },
-];
+interface TemplateSummary {
+  id: string;
+  name: string;
+  description?: string;
+  industry: string;
+  agentCount: number;
+  teamCount: number;
+}
+
+const filterTemplates = createTextFilter<TemplateSummary>("name", "description");
 
 export default function MarketplacePage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-  const [templates, setTemplates] = useState<TemplateListing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<TemplateCategory | 'all'>('all');
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const templates = useQuery(convexApi.templates.list, isAuthenticated ? {} : "skip");
+  const loading = templates === undefined;
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
-    if (!isAuthenticated && !hasToken) {
-      router.replace('/login');
-      return;
-    }
-    if (!isAuthenticated) return; // Still initializing, wait
-    api.templates.list().then((data) => {
-      setTemplates(data);
-      setLoading(false);
-    });
-  }, [isAuthenticated, router]);
+  if (!authLoading && !isAuthenticated) {
+    router.replace("/login");
+    return null;
+  }
 
-  const filtered = templates.filter((t) => {
-    if (category !== 'all' && t.category !== category) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        t.displayName.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.tags.some((tag) => tag.includes(q))
-      );
-    }
-    return true;
-  });
+  const filtered = filterTemplates(templates ?? [], search);
 
   if (!isAuthenticated) return null;
 
@@ -59,7 +49,7 @@ export default function MarketplacePage() {
       <header className="border-b border-edge bg-surface">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push("/")}
             className="flex items-center gap-1.5 text-xs text-fg-3 transition-colors hover:text-fg-2"
           >
             <ArrowLeftIcon size={14} />
@@ -74,7 +64,7 @@ export default function MarketplacePage() {
 
       {/* Content */}
       <main className="mx-auto max-w-5xl px-6 py-8">
-        {/* Search + Filters */}
+        {/* Search */}
         <div className="mb-8 space-y-4">
           <div className="relative">
             <MagnifyingGlassIcon
@@ -87,21 +77,6 @@ export default function MarketplacePage() {
               placeholder="Search templates..."
               className="pl-8"
             />
-          </div>
-          <div className="flex gap-1">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategory(cat.id)}
-                className={`rounded-sm px-2.5 py-1 text-[11px] transition-all ${
-                  category === cat.id
-                    ? 'bg-blue-light font-semibold text-fg'
-                    : 'text-fg-3 hover:bg-surface-3 hover:text-fg-2'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -130,8 +105,8 @@ export default function MarketplacePage() {
                     <PackageIcon size={20} className="text-fg-2" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-fg">{tpl.displayName}</div>
-                    <div className="text-[10px] text-fg-3">{tpl.author}</div>
+                    <div className="text-sm font-semibold text-fg">{tpl.name}</div>
+                    <div className="text-[10px] text-fg-3">{tpl.industry}</div>
                   </div>
                 </div>
 
@@ -149,7 +124,7 @@ export default function MarketplacePage() {
                     {tpl.teamCount} teams
                   </div>
                   <div className="flex-1" />
-                  <Badge>{tpl.category}</Badge>
+                  <Badge>{tpl.industry}</Badge>
                   <Badge variant="subtle">Free</Badge>
                 </div>
               </button>

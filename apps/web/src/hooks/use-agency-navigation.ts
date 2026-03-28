@@ -1,18 +1,22 @@
-'use client';
+"use client";
 
-import { useRouter, useParams } from 'next/navigation';
-import { useUIStore } from '@/stores/ui-store';
-import { useDiagramStore } from '@/stores/diagram-store';
-import { useChatStore } from '@/stores/chat-store';
-import { useProjects } from '@/hooks/use-queries';
-import { DiagramViewMode } from '@monokeros/types';
-import { buildSearchKey } from '@monokeros/utils';
+import { useRouter, useParams } from "next/navigation";
+import { useUIStore } from "@/stores/ui-store";
+import { useDiagramStore } from "@/stores/diagram-store";
+import { useChatStore } from "@/stores/chat-store";
+import { useProjects } from "@/hooks/use-queries";
+import { DiagramViewMode } from "@monokeros/types";
+import { buildSearchKey } from "@monokeros/utils";
 
 export function useAgencyNavigation() {
   const router = useRouter();
   const { workspace: slug } = useParams<{ workspace: string }>();
   const { openDetailPanel } = useUIStore();
-  const { setHighlightedNode, setViewMode: setDiagramViewMode, setSearch: setDiagramSearch } = useDiagramStore();
+  const {
+    setHighlightedNode,
+    setViewMode: setDiagramViewMode,
+    setSearch: setDiagramSearch,
+  } = useDiagramStore();
   const { setActiveConversation } = useChatStore();
   const { data: projects } = useProjects();
 
@@ -23,7 +27,7 @@ export function useAgencyNavigation() {
   function goToAgentDiagram(agentId: string) {
     router.push(`/${slug}/org`);
     setHighlightedNode(agentId);
-    openDetailPanel('agent', agentId);
+    openDetailPanel("agent", agentId);
   }
 
   function goToAgentOrg(agentName: string) {
@@ -32,11 +36,15 @@ export function useAgencyNavigation() {
   }
 
   function goToAgentTasks(agentName: string) {
-    router.push(`/${slug}/projects/list?search=${encodeURIComponent(buildSearchKey('assigned', agentName))}`);
+    router.push(
+      `/${slug}/projects/list?search=${encodeURIComponent(buildSearchKey("assigned", agentName))}`,
+    );
   }
 
   function goToAgentProjects(agentName: string) {
-    router.push(`/${slug}/projects?search=${encodeURIComponent(buildSearchKey('with', agentName))}`);
+    router.push(
+      `/${slug}/projects?search=${encodeURIComponent(buildSearchKey("with", agentName))}`,
+    );
   }
 
   function goToAgentChat(agentId: string) {
@@ -45,6 +53,10 @@ export function useAgencyNavigation() {
 
   function goToAgentFiles(agentId: string) {
     router.push(`/${slug}/files?agent=${agentId}`);
+  }
+
+  function goToAgentBox(agentId: string) {
+    router.push(`/${slug}/boxes?agent=${agentId}`);
   }
 
   function goToAgentConsole(agentId: string, conversationId?: string) {
@@ -74,7 +86,7 @@ export function useAgencyNavigation() {
     } else {
       router.push(`/${slug}/projects/kanban`);
     }
-    openDetailPanel('task', taskId);
+    openDetailPanel("task", taskId);
   }
 
   function goToProjectChat(projectId: string) {
@@ -96,6 +108,7 @@ export function useAgencyNavigation() {
     goToAgentProjects,
     goToAgentChat,
     goToAgentFiles,
+    goToAgentBox,
     goToAgentConsole,
     goToIssueDetail,
     goToProjectDiagram,

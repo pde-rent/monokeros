@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { PlusIcon } from '@phosphor-icons/react';
-import { Button, ListRowButton, useClickOutside } from '@monokeros/ui';
-import { useFabConfig } from './fab-context';
+import { useState, useRef } from "react";
+import { PlusIcon } from "@phosphor-icons/react";
+import { Button, ListRowButton, useClickOutside } from "@monokeros/ui";
+import { useFabConfig } from "./fab-context";
 
 export function Fab() {
   const config = useFabConfig();
@@ -35,7 +35,10 @@ export function Fab() {
             return (
               <ListRowButton
                 key={action.id}
-                onClick={() => { action.onClick(); setOpen(false); }}
+                onClick={() => {
+                  action.onClick();
+                  setOpen(false);
+                }}
                 className="items-center text-xs rounded-sm"
               >
                 <Icon size={14} />
@@ -47,11 +50,7 @@ export function Fab() {
       )}
 
       {/* FAB button */}
-      <Button
-        onClick={handleClick}
-        title={tooltip}
-        className="h-9 w-9 !p-0 shadow-lg"
-      >
+      <Button onClick={handleClick} title={tooltip} className="h-9 w-9 !p-0 shadow-lg">
         <PlusIcon size={18} weight="bold" />
       </Button>
     </div>
